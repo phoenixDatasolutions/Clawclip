@@ -40,6 +40,11 @@ class NexusApp:
         self.audit_logger = None
         self.replay_recorder = None
         self.company_manager = None
+        self.healing_manager = None
+        self.webhook_gateway = None
+        self.sandbox_manager = None
+        self.branch_manager = None
+        self.workspace_manager = None
         self._tasks: list[asyncio.Task] = []
         self._running = False
         self.cache: Any = None
@@ -82,11 +87,20 @@ class NexusApp:
         provider_registry: Registry = Registry("providers")
         for name, p in self.providers.items():
             provider_registry.register(name, p)
+
+        # Load agent configs from YAML
+        from clawclip.agents.loader import AgentLoader
+        agent_loader = AgentLoader()
+        agent_configs_list = agent_loader.load_all_agents("config/agents")
+        agent_configs = {ac.agent_type: ac for ac in agent_configs_list}
+        logger.info("Agent configs loaded: %s", list(agent_configs.keys()))
+
         self.agent_engine = AgentEngine(
             event_bus=self.event_bus,
             provider_registry=provider_registry,
             skill_manager=self.skill_manager,
             storage=self.db,
+            agent_configs=agent_configs,
         )
         self.container.register("agent_engine", self.agent_engine)
         logger.info("Agent engine initialized")
@@ -171,6 +185,19 @@ class NexusApp:
                 logger.info("Provider registered: litellm")
             except Exception as e:
                 logger.warning("litellm provider failed: %s", e)
+
+        if cfg.get("providers.openai_compat.enabled", False):
+            try:
+                from clawclip.providers.openai_compat import OpenAICompatProvider
+                p = OpenAICompatProvider(
+                    base_url=cfg.get("providers.openai_compat.base_url", ""),
+                    api_key=cfg.get("providers.openai_compat.api_key", ""),
+                    default_model=cfg.get("providers.openai_compat.default_model", "default"),
+                )
+                self.providers["openai-compat"] = p
+                logger.info("Provider registered: openai-compat")
+            except Exception as e:
+                logger.warning("openai-compat provider failed: %s", e)
 
         if not self.providers:
             logger.warning("No LLM providers configured — agents will not function")
@@ -280,6 +307,86 @@ class NexusApp:
             except Exception as e:
                 logger.warning("Company manager failed: %s", e)
 
+        # MCP Client — connect to external MCP servers
+        if cfg.get("features.mcp.enabled", False):
+            try:
+                from clawclip.mcp.client import MCPClient
+                from clawclip.mcp.registry import MCPRegistry
+                from clawclip.mcp.bridge import MCPSkillAdapter
+                mcp_registry = MCPRegistry()
+                external_servers = cfg.get("features.mcp.external_servers", [])
+                for server_url in external_servers:
+                    client = MCPClient(server_url)
+                    await client.connect()
+                    tools = await client.list_tools()
+                    for tool in tools:
+                        bridge = MCPSkillAdapter(client, tool)
+                        mcp_registry.register(bridge.name, bridge)
+                logger.info("MCP client connected to %d external servers", len(external_servers))
+            except Exception as e:
+                logger.warning("MCP client failed: %s", e)
+
+        # Self-Healing
+        if cfg.get("features.self_healing.enabled", True):
+            try:
+                from clawclip.healing.detector import detect_failure, should_retry
+                from clawclip.healing.strategies import get_default_strategies
+                from clawclip.healing.feedback import FeedbackStore
+                self.healing_manager = {
+                    "detect_failure": detect_failure,
+                    "should_retry": should_retry,
+                    "strategies": get_default_strategies(),
+                    "feedback": FeedbackStore(),
+                }
+                logger.info("Self-healing initialized (%d strategies)", len(self.healing_manager["strategies"]))
+            except Exception as e:
+                logger.warning("Self-healing failed: %s", e)
+
+        # Webhook Gateway
+        if cfg.get("features.webhooks.enabled", False):
+            try:
+                from clawclip.webhooks.gateway import WebhookGateway
+                self.webhook_gateway = WebhookGateway(
+                    event_bus=self.event_bus,
+                    agent_engine=self.agent_engine,
+                )
+                logger.info("Webhook gateway initialized")
+            except Exception as e:
+                logger.warning("Webhook gateway failed: %s", e)
+
+        # Docker Sandbox
+        if cfg.get("features.docker_sandbox.enabled", False):
+            try:
+                from clawclip.sandbox.manager import SandboxManager
+                from clawclip.sandbox.config import SandboxConfig
+                sandbox_cfg = SandboxConfig(
+                    memory_limit=cfg.get("features.docker_sandbox.memory_limit", "512m"),
+                    cpu_limit=float(cfg.get("features.docker_sandbox.cpu_limit", 1.0)),
+                    network_access=cfg.get("features.docker_sandbox.network_access", False),
+                )
+                self.sandbox_manager = SandboxManager(sandbox_cfg)
+                logger.info("Sandbox manager initialized")
+            except Exception as e:
+                logger.warning("Sandbox manager failed: %s", e)
+
+        # Conversation Branching
+        if cfg.get("features.conversation_branching.enabled", False):
+            try:
+                from clawclip.branching.manager import BranchManager
+                self.branch_manager = BranchManager(storage=self.db)
+                logger.info("Branch manager initialized")
+            except Exception as e:
+                logger.warning("Branch manager failed: %s", e)
+
+        # Teams & Workspaces
+        if cfg.get("features.teams.enabled", False):
+            try:
+                from clawclip.teams.workspace import WorkspaceManager
+                self.workspace_manager = WorkspaceManager(db=self.db)
+                logger.info("Workspace manager initialized")
+            except Exception as e:
+                logger.warning("Teams/workspaces failed: %s", e)
+
     async def _init_platforms(self) -> None:
         cfg = self.config
 
@@ -331,6 +438,19 @@ class NexusApp:
                 logger.info("CLI adapter configured")
             except Exception as e:
                 logger.warning("CLI adapter failed: %s", e)
+
+        if cfg.get("platforms.webui.enabled", False):
+            try:
+                from clawclip.platforms.webui.adapter import WebUIAdapter
+                adapter = WebUIAdapter(
+                    host=cfg.get("platforms.webui.host", "0.0.0.0"),
+                    port=int(cfg.get("platforms.webui.port", 8081)),
+                    event_bus=self.event_bus,
+                )
+                self.platforms["webui"] = adapter
+                logger.info("WebUI adapter configured")
+            except Exception as e:
+                logger.warning("WebUI adapter failed: %s", e)
 
     async def _init_dashboard(self) -> None:
         try:

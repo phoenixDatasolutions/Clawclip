@@ -170,3 +170,9 @@ class ShellSkill:
 
     async def shutdown(self) -> None:
         pass
+
+
+
+def create_skill(config: dict | None = None) -> ShellSkill:
+    """Factory function for SkillLoader auto-discovery."""
+    return ShellSkill()

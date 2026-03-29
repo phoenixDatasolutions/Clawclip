@@ -233,3 +233,8 @@ class GitSkill:
             return SkillResult(success=False, output="Git command timed out", error="timeout")
         except Exception as e:
             return SkillResult(success=False, output=str(e), error=str(e))
+
+
+def create_skill(config: dict | None = None) -> GitSkill:
+    """Factory function for SkillLoader auto-discovery."""
+    return GitSkill()
