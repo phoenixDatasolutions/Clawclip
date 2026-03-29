@@ -1,71 +1,1270 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ClawClip Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:  '#fff1f2',
+              100: '#ffe4e6',
+              200: '#fecdd3',
+              300: '#fda4af',
+              400: '#fb7185',
+              500: '#f43f5e',
+              600: '#ef4444',
+              700: '#dc2626',
+              800: '#b91c1c',
+              900: '#991b1b',
+            },
+          },
+        },
+      },
+    }
+  </script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <style>
-    /* Minimal dark theme */
-    body { background: #0f172a; color: #e2e8f0; font-family: system-ui; margin: 0; }
-    #app { display: flex; flex-direction: column; min-height: 100vh; }
-    .nav { background: #1e293b; padding: 1rem 2rem; border-bottom: 1px solid #334155; }
-    .nav h1 { margin: 0; font-size: 1.25rem; color: #818cf8; }
-    .content { padding: 2rem; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem; }
-    .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
-    .toggle { display: flex; align-items: center; gap: 0.5rem; }
-    .badge { padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; }
-    .badge-green { background: #166534; color: #bbf7d0; }
-    .badge-gray { background: #374151; color: #9ca3af; }
-    .btn { padding: 0.5rem 1rem; border-radius: 0.375rem; border: none; cursor: pointer; font-size: 0.875rem; }
-    .btn-primary { background: #4f46e5; color: white; }
-    .btn-danger { background: #dc2626; color: white; }
-    pre { background: #0f172a; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; font-size: 0.8rem; }
-    code { background: #1e293b; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.85em; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0f172a; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+    .spin { animation: spin 0.8s linear infinite; }
+    .pulse { animation: pulse 1.4s ease-in-out infinite; }
+    .fade-in { animation: fadeIn 0.2s ease-out; }
+    .slide-in { animation: slideIn 0.18s ease-out; }
+    .skeleton { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    textarea:focus, input:focus, select:focus { outline: none; }
   </style>
 </head>
 <body>
-  <div id="app">
-    <nav class="nav"><h1>&#9889; ClawClip Dashboard</h1></nav>
-    <div class="content">
-      <p style="color: #94a3b8;">Loading dashboard&#8230; If this persists, ensure the dashboard is running at this address.</p>
-      <p style="color: #64748b; font-size: 0.875rem;">REST API available at <code>/api/</code> | WebSocket at <code>/ws/</code></p>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TOKEN_KEY = 'clawclip_token';
+const PAGES = ['dashboard', 'chat', 'agents', 'skills', 'settings'];
+
+// ─── Lucide icon helper ───────────────────────────────────────────────────────
+
+function Icon({ name, size = 16, className = '' }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    ref.current.innerHTML = '';
+    const el = lucide.createElement(lucide[name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())]);
+    if (el) {
+      el.setAttribute('width', size);
+      el.setAttribute('height', size);
+      ref.current.appendChild(el);
+    }
+  }, [name, size]);
+  return <span ref={ref} className={`inline-flex items-center justify-center ${className}`} />;
+}
+
+// ─── Auth helpers ─────────────────────────────────────────────────────────────
+
+const getToken = () => localStorage.getItem(TOKEN_KEY);
+const setToken = (t) => localStorage.setItem(TOKEN_KEY, t);
+const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+
+async function apiFetch(path, options = {}) {
+  const token = getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+  const res = await fetch(path, { ...options, headers });
+  if (res.status === 401) {
+    clearToken();
+    window.location.reload();
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ─── Toast system ─────────────────────────────────────────────────────────────
+
+const ToastContext = React.createContext(null);
+
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  const add = useCallback((msg, type = 'info', duration = 3500) => {
+    const id = Date.now() + Math.random();
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), duration);
+  }, []);
+  const remove = useCallback((id) => setToasts(t => t.filter(x => x.id !== id)), []);
+
+  return (
+    <ToastContext.Provider value={add}>
+      {children}
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none" style={{maxWidth:'360px'}}>
+        {toasts.map(t => (
+          <div key={t.id} className={`fade-in flex items-start gap-3 px-4 py-3 rounded-lg shadow-xl pointer-events-auto cursor-pointer
+            ${t.type === 'error' ? 'bg-red-900/90 border border-red-700 text-red-100' :
+              t.type === 'success' ? 'bg-emerald-900/90 border border-emerald-700 text-emerald-100' :
+              'bg-slate-700/90 border border-slate-600 text-slate-100'}`}
+            onClick={() => remove(t.id)}>
+            <span className="text-sm leading-relaxed">{t.msg}</span>
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+
+const useToast = () => React.useContext(ToastContext);
+
+// ─── Hooks ────────────────────────────────────────────────────────────────────
+
+function useApi(path, { interval = 0, skip = false } = {}) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetch_ = useCallback(async () => {
+    if (skip) return;
+    try {
+      const d = await apiFetch(path);
+      setData(d);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [path, skip]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch_();
+    if (interval > 0) {
+      const id = setInterval(fetch_, interval);
+      return () => clearInterval(id);
+    }
+  }, [fetch_, interval]);
+
+  return { data, loading, error, refetch: fetch_ };
+}
+
+// ─── Shared UI ────────────────────────────────────────────────────────────────
+
+function SkeletonCard({ className = '' }) {
+  return (
+    <div className={`rounded-xl border border-slate-700/50 p-5 ${className}`}>
+      <div className="skeleton h-4 w-24 rounded mb-3" />
+      <div className="skeleton h-8 w-16 rounded mb-2" />
+      <div className="skeleton h-3 w-32 rounded" />
     </div>
-  </div>
-  <script>
-    // Simple fetch to check API
-    fetch('/api/system/health').then(r => r.json()).then(d => {
-      document.querySelector('.content').innerHTML = `
-        <div class="card">
-          <h2 style="margin-top:0;">System Status <span class="badge badge-green">online</span></h2>
-          <pre>${JSON.stringify(d, null, 2)}</pre>
+  );
+}
+
+function StatusBadge({ status }) {
+  const map = {
+    running:   'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    active:    'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    idle:      'bg-slate-600/40 text-slate-400 border-slate-600/50',
+    paused:    'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    failed:    'bg-red-500/20 text-red-400 border-red-500/30',
+    cancelled: 'bg-slate-600/40 text-slate-500 border-slate-600/50',
+    ok:        'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    error:     'bg-red-500/20 text-red-400 border-red-500/30',
+  };
+  const cls = map[status] || map.idle;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${cls}`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+      {status}
+    </span>
+  );
+}
+
+function Card({ children, className = '' }) {
+  return (
+    <div className={`bg-slate-800/60 border border-slate-700/50 rounded-xl ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function Button({ children, onClick, variant = 'primary', size = 'md', disabled = false, className = '' }) {
+  const base = 'inline-flex items-center gap-2 font-medium rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed';
+  const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-base' };
+  const variants = {
+    primary: 'bg-red-600 hover:bg-red-500 text-white shadow-sm',
+    secondary: 'bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600',
+    ghost: 'hover:bg-slate-700/50 text-slate-400 hover:text-slate-200',
+    danger: 'bg-red-700 hover:bg-red-600 text-white',
+  };
+  return (
+    <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} onClick={onClick} disabled={disabled}>
+      {children}
+    </button>
+  );
+}
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+
+function Login({ onLogin }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || 'Invalid credentials');
+      }
+      const { access_token } = await res.json();
+      setToken(access_token);
+      onLogin();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'radial-gradient(ellipse at 50% 0%, #1a0a0a 0%, #0f172a 60%)' }}>
+      <div className="w-full max-w-sm fade-in">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <pre className="text-red-500 text-xs leading-tight font-mono select-none inline-block text-left">{
+`  ██████╗██╗      █████╗ ██╗    ██╗
+ ██╔════╝██║     ██╔══██╗██║    ██║
+ ██║     ██║     ███████║██║ █╗ ██║
+ ██║     ██║     ██╔══██║██║███╗██║
+ ╚██████╗███████╗██║  ██║╚███╔███╔╝
+  ╚═════╝╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝`
+          }</pre>
+          <p className="text-slate-500 text-sm mt-2 tracking-widest uppercase font-mono">Dashboard</p>
         </div>
-        <div class="card">
-          <h2 style="margin-top:0;">API Endpoints</h2>
-          <p style="color:#94a3b8;">Interactive docs: <a href="/api/docs" style="color:#818cf8;">/api/docs</a></p>
-          <ul style="color:#94a3b8; line-height:1.8;">
-            <li><code>POST /api/auth/login</code> &mdash; obtain JWT token</li>
-            <li><code>GET  /api/agents</code> &mdash; list agents</li>
-            <li><code>GET  /api/analytics/costs</code> &mdash; cost summary</li>
-            <li><code>GET  /api/conversations</code> &mdash; conversation history</li>
-            <li><code>GET  /api/skills</code> &mdash; registered skills</li>
-            <li><code>GET  /api/system/health</code> &mdash; this endpoint</li>
-          </ul>
+
+        <Card className="p-6">
+          <h1 className="text-lg font-semibold text-white mb-1">Sign in</h1>
+          <p className="text-slate-400 text-sm mb-6">Enter your admin credentials to continue</p>
+
+          {error && (
+            <div className="mb-4 px-3 py-2.5 rounded-lg bg-red-900/40 border border-red-700/60 text-red-300 text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={submit} className="flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Username</label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                className="w-full bg-slate-900/60 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:border-red-500 transition-colors"
+                placeholder="admin"
+                autoFocus
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full bg-slate-900/60 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:border-red-500 transition-colors"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <Button variant="primary" size="lg" disabled={loading} className="w-full justify-center mt-1">
+              {loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full spin" /> : null}
+              {loading ? 'Signing in…' : 'Sign in'}
+            </Button>
+          </form>
+        </Card>
+
+        <p className="text-center text-slate-600 text-xs mt-6">
+          ClawClip v1 &bull; NexusAI Platform
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+
+const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+  { id: 'chat',      label: 'Chat',      icon: 'MessageSquare' },
+  { id: 'agents',    label: 'Agents',    icon: 'Bot' },
+  { id: 'skills',    label: 'Skills',    icon: 'Puzzle' },
+  { id: 'settings',  label: 'Settings',  icon: 'Settings' },
+];
+
+function Sidebar({ page, setPage, onLogout, collapsed, setCollapsed }) {
+  return (
+    <aside className={`flex flex-col shrink-0 bg-slate-800/80 border-r border-slate-700/50 transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}
+           style={{ height: '100vh', position: 'sticky', top: 0 }}>
+      {/* Brand */}
+      <div className={`flex items-center gap-3 px-3.5 py-4 border-b border-slate-700/50 ${collapsed ? 'justify-center' : ''}`}>
+        <div className="w-7 h-7 rounded-lg bg-red-600 flex items-center justify-center shrink-0">
+          <Icon name="Zap" size={14} className="text-white" />
         </div>
-        <div class="card">
-          <h2 style="margin-top:0;">Build Full Dashboard</h2>
-          <pre>cd clawclip/dashboard/frontend\nnpm install\nnpm run build</pre>
+        {!collapsed && <span className="font-bold text-white text-sm tracking-wide">ClawClip</span>}
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-2 py-3 flex flex-col gap-0.5 overflow-y-auto">
+        {NAV_ITEMS.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setPage(item.id)}
+            title={collapsed ? item.label : ''}
+            className={`flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-sm font-medium transition-all w-full
+              ${page === item.id
+                ? 'bg-red-600/20 text-red-400 border border-red-600/30'
+                : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200 border border-transparent'
+              } ${collapsed ? 'justify-center' : ''}`}
+          >
+            <Icon name={item.icon} size={16} className="shrink-0" />
+            {!collapsed && <span>{item.label}</span>}
+          </button>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="px-2 py-3 border-t border-slate-700/50 flex flex-col gap-1">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex items-center gap-3 px-2.5 py-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-700/40 transition-all text-sm w-full"
+          title={collapsed ? 'Expand' : 'Collapse'}
+        >
+          <Icon name={collapsed ? 'ChevronsRight' : 'ChevronsLeft'} size={15} className="shrink-0" />
+          {!collapsed && <span>Collapse</span>}
+        </button>
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-3 px-2.5 py-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all text-sm w-full"
+          title={collapsed ? 'Logout' : ''}
+        >
+          <Icon name="LogOut" size={15} className="shrink-0" />
+          {!collapsed && <span>Logout</span>}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+
+function Header({ page, username }) {
+  const titles = {
+    dashboard: 'Dashboard',
+    chat: 'Chat',
+    agents: 'Agents',
+    skills: 'Skills',
+    settings: 'Settings',
+  };
+  const subtitles = {
+    dashboard: 'System overview and recent activity',
+    chat: 'Interactive conversation with ClawClip agents',
+    agents: 'Monitor and manage running agent instances',
+    skills: 'Browse and manage loaded skill modules',
+    settings: 'Configure platform features and providers',
+  };
+  const icons = { dashboard: 'LayoutDashboard', chat: 'MessageSquare', agents: 'Bot', skills: 'Puzzle', settings: 'Settings' };
+
+  return (
+    <header className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50 bg-slate-900/40 shrink-0">
+      <div className="flex items-center gap-3">
+        <Icon name={icons[page]} size={20} className="text-slate-400" />
+        <div>
+          <h1 className="font-semibold text-white text-base leading-tight">{titles[page]}</h1>
+          <p className="text-slate-500 text-xs">{subtitles[page]}</p>
         </div>
-      `;
-    }).catch(err => {
-      document.querySelector('.content').innerHTML = `
-        <div class="card">
-          <h2 style="margin-top:0; color:#f87171;">Could not reach API</h2>
-          <p style="color:#94a3b8;">${err}</p>
-          <p style="color:#64748b; font-size:0.875rem;">Make sure the ClawClip dashboard server is running.</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 rounded-full border border-slate-700/50">
+          <div className="w-6 h-6 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center">
+            <Icon name="User" size={12} className="text-red-400" />
+          </div>
+          <span className="text-slate-300 text-xs font-medium">{username || 'admin'}</span>
         </div>
-      `;
+        <a href="/api/docs" target="_blank" rel="noreferrer"
+           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700/40 rounded-lg transition-all border border-transparent hover:border-slate-600/50">
+          <Icon name="ExternalLink" size={12} />
+          API Docs
+        </a>
+      </div>
+    </header>
+  );
+}
+
+// ─── Dashboard Page ───────────────────────────────────────────────────────────
+
+function StatCard({ icon, label, value, sub, accent, loading }) {
+  if (loading) return <SkeletonCard />;
+  return (
+    <Card className="p-5 fade-in">
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${accent || 'bg-slate-700/60'}`}>
+          <Icon name={icon} size={16} className="text-white" />
+        </div>
+      </div>
+      <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-2xl font-bold text-white mb-1">{value ?? '—'}</p>
+      {sub && <p className="text-slate-500 text-xs">{sub}</p>}
+    </Card>
+  );
+}
+
+function HealthBar({ label, value, color = 'bg-red-500' }) {
+  const pct = Math.min(100, Math.max(0, value || 0));
+  return (
+    <div>
+      <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+        <span>{label}</span>
+        <span className="font-mono">{pct.toFixed(1)}%</span>
+      </div>
+      <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-700 ${pct > 80 ? 'bg-red-500' : pct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+             style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function formatUptime(secs) {
+  if (!secs) return '—';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function DashboardPage() {
+  const { data: health, loading: healthLoading } = useApi('/api/system/health', { interval: 5000 });
+  const { data: agents, loading: agentsLoading } = useApi('/api/agents', { interval: 3000 });
+  const { data: skills, loading: skillsLoading } = useApi('/api/skills');
+  const { data: costs } = useApi('/api/analytics/costs');
+
+  const activeAgents = useMemo(() => (agents || []).filter(a => a.status === 'running').length, [agents]);
+  const skillCount = useMemo(() => (skills || []).length, [skills]);
+
+  return (
+    <div className="p-6 flex flex-col gap-6 fade-in">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard icon="Bot" label="Active Agents" value={agentsLoading ? null : activeAgents}
+                  sub={`${(agents || []).length} total instances`}
+                  accent="bg-red-600/80" loading={agentsLoading} />
+        <StatCard icon="Puzzle" label="Skills Loaded" value={skillsLoading ? null : skillCount}
+                  sub="registered modules"
+                  accent="bg-indigo-600/80" loading={skillsLoading} />
+        <StatCard icon="Clock" label="Uptime"
+                  value={healthLoading ? null : formatUptime(health?.uptime_seconds)}
+                  sub={health?.started_at ? `since ${new Date(health.started_at).toLocaleDateString()}` : ''}
+                  accent="bg-sky-600/80" loading={healthLoading} />
+        <StatCard icon="Wifi" label="API Status"
+                  value={healthLoading ? null : health?.status === 'ok' ? 'Online' : 'Degraded'}
+                  sub={costs ? `$${(costs.today_usd || 0).toFixed(4)} today` : ''}
+                  accent={health?.status === 'ok' ? 'bg-emerald-600/80' : 'bg-red-600/80'}
+                  loading={healthLoading} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* System Health */}
+        <Card className="p-5">
+          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <Icon name="Activity" size={15} className="text-red-400" />
+            System Resources
+          </h2>
+          {healthLoading ? (
+            <div className="flex flex-col gap-4">
+              {[1,2,3].map(i => <div key={i} className="skeleton h-4 rounded" />)}
+            </div>
+          ) : health ? (
+            <div className="flex flex-col gap-4">
+              {health.cpu_percent != null && <HealthBar label="CPU" value={health.cpu_percent} />}
+              {health.ram_percent != null && <HealthBar label={`RAM  (${(health.ram_used_mb/1024).toFixed(1)} / ${(health.ram_total_mb/1024).toFixed(1)} GB)`} value={health.ram_percent} />}
+              {health.disk_percent != null && <HealthBar label={`Disk  (${health.disk_used_gb} / ${health.disk_total_gb} GB)`} value={health.disk_percent} />}
+              {health.cpu_percent == null && (
+                <p className="text-slate-500 text-sm">psutil not installed — resource metrics unavailable</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-slate-500 text-sm">Could not reach health endpoint</p>
+          )}
+        </Card>
+
+        {/* Recent Agents */}
+        <Card className="p-5">
+          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <Icon name="Bot" size={15} className="text-red-400" />
+            Recent Agents
+          </h2>
+          {agentsLoading ? (
+            <div className="flex flex-col gap-3">
+              {[1,2,3].map(i => <div key={i} className="skeleton h-10 rounded-lg" />)}
+            </div>
+          ) : (agents || []).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-slate-500">
+              <Icon name="Bot" size={32} className="mb-2 opacity-30" />
+              <p className="text-sm">No agents running</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {(agents || []).slice(0, 5).map(a => (
+                <div key={a.agent_id} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-900/40 border border-slate-700/40 slide-in">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-md bg-slate-700/60 flex items-center justify-center shrink-0">
+                      <Icon name="Bot" size={13} className="text-slate-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-white text-xs font-medium truncate">{a.agent_type}</p>
+                      <p className="text-slate-500 text-xs truncate">{a.agent_id.slice(0, 12)}…</p>
+                    </div>
+                  </div>
+                  <StatusBadge status={a.status} />
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Cost Summary */}
+      {costs && (
+        <Card className="p-5">
+          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <Icon name="DollarSign" size={15} className="text-red-400" />
+            Cost Summary (30 days)
+          </h2>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Today', value: costs.today_usd },
+              { label: 'This Week', value: costs.week_usd },
+              { label: 'This Month', value: costs.month_usd },
+            ].map(({ label, value }) => (
+              <div key={label} className="text-center px-4 py-3 rounded-lg bg-slate-900/40 border border-slate-700/40">
+                <p className="text-slate-400 text-xs mb-1">{label}</p>
+                <p className="text-white font-semibold font-mono">${(value || 0).toFixed(4)}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Chat Page ────────────────────────────────────────────────────────────────
+
+const AGENT_TYPES = ['coordinator', 'code', 'research', 'devops', 'system'];
+const MODEL_OPTIONS = [
+  { value: '', label: 'Default model' },
+  { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+  { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+  { value: 'claude-opus-4-5', label: 'Claude Opus 4.5' },
+  { value: 'gpt-4o', label: 'GPT-4o' },
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+];
+
+function ChatMessage({ msg }) {
+  const isUser = msg.role === 'user';
+  return (
+    <div className={`flex gap-3 fade-in ${isUser ? 'flex-row-reverse' : ''}`}>
+      <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center mt-0.5 ${isUser ? 'bg-red-600' : 'bg-slate-700'}`}>
+        <Icon name={isUser ? 'User' : 'Bot'} size={13} className="text-white" />
+      </div>
+      <div className={`max-w-[70%] ${isUser ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+        <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words
+          ${isUser
+            ? 'bg-red-600 text-white rounded-tr-sm'
+            : 'bg-slate-700/60 border border-slate-600/50 text-slate-200 rounded-tl-sm'
+          }`}>
+          {msg.content}
+          {msg.streaming && <span className="inline-block w-2 h-4 bg-current ml-1 pulse rounded-sm" />}
+        </div>
+        {msg.meta && (
+          <p className="text-xs text-slate-600 px-1">
+            {msg.meta.cost_usd ? `$${msg.meta.cost_usd.toFixed(5)}` : ''}
+            {msg.meta.tokens ? ` · ${msg.meta.tokens} tokens` : ''}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChatPage() {
+  const toast = useToast();
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [model, setModel] = useState('');
+  const [agentType, setAgentType] = useState('coordinator');
+  const [loading, setLoading] = useState(false);
+  const [wsStatus, setWsStatus] = useState('disconnected'); // disconnected | connecting | connected | error
+  const wsRef = useRef(null);
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Connect WebSocket
+  const connectWs = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState < 2) return; // already open/connecting
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const url = `${proto}://${window.location.host}/ws/chat`;
+    setWsStatus('connecting');
+    const ws = new WebSocket(url);
+    wsRef.current = ws;
+
+    ws.onopen = () => setWsStatus('connected');
+    ws.onclose = () => { setWsStatus('disconnected'); setLoading(false); };
+    ws.onerror = () => { setWsStatus('error'); setLoading(false); };
+    ws.onmessage = (event) => {
+      try {
+        const frame = JSON.parse(event.data);
+        if (frame.type === 'chunk') {
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === 'assistant' && last.streaming) {
+              return [...prev.slice(0, -1), { ...last, content: last.content + frame.text }];
+            }
+            return [...prev, { id: Date.now(), role: 'assistant', content: frame.text, streaming: true }];
+          });
+        } else if (frame.type === 'done') {
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === 'assistant') {
+              return [...prev.slice(0, -1), { ...last, content: last.content + (frame.text || ''), streaming: false,
+                meta: { cost_usd: frame.cost_usd, tokens: frame.tokens } }];
+            }
+            return prev;
+          });
+          setLoading(false);
+        } else if (frame.type === 'error') {
+          toast(frame.text || 'Agent error', 'error');
+          setMessages(prev => prev.filter(m => !m.streaming));
+          setLoading(false);
+        }
+      } catch {}
+    };
+  }, []);
+
+  useEffect(() => { connectWs(); return () => wsRef.current?.close(); }, []);
+
+  const send = useCallback(() => {
+    const text = input.trim();
+    if (!text || loading) return;
+    if (!wsRef.current || wsRef.current.readyState !== 1) {
+      connectWs();
+      toast('Reconnecting to chat server…', 'info');
+      return;
+    }
+    const userMsg = { id: Date.now(), role: 'user', content: text };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setLoading(true);
+    wsRef.current.send(JSON.stringify({ message: text, agent: agentType, model: model || undefined }));
+  }, [input, loading, agentType, model, connectWs]);
+
+  const onKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  }, [send]);
+
+  const clearChat = () => { setMessages([]); };
+
+  const wsColors = { connected: 'text-emerald-400', connecting: 'text-amber-400 pulse', disconnected: 'text-slate-500', error: 'text-red-400' };
+
+  return (
+    <div className="flex flex-col h-full max-h-[calc(100vh-65px)] fade-in">
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-700/50 bg-slate-800/30 shrink-0 flex-wrap gap-y-2">
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-mono ${wsColors[wsStatus]}`}>
+            {wsStatus === 'connected' ? '● connected' : wsStatus === 'connecting' ? '○ connecting…' : wsStatus === 'error' ? '✕ error' : '○ disconnected'}
+          </span>
+          {wsStatus !== 'connected' && (
+            <button onClick={connectWs} className="text-xs text-slate-500 hover:text-slate-300 underline">reconnect</button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto flex-wrap gap-y-2">
+          <select value={agentType} onChange={e => setAgentType(e.target.value)}
+            className="bg-slate-800 border border-slate-600 text-slate-300 text-xs rounded-lg px-2.5 py-1.5 focus:border-red-500 transition-colors">
+            {AGENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select value={model} onChange={e => setModel(e.target.value)}
+            className="bg-slate-800 border border-slate-600 text-slate-300 text-xs rounded-lg px-2.5 py-1.5 focus:border-red-500 transition-colors">
+            {MODEL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <Button variant="ghost" size="sm" onClick={clearChat} disabled={messages.length === 0}>
+            <Icon name="Trash2" size={13} />
+            Clear
+          </Button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+        {messages.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 py-16">
+            <div className="w-16 h-16 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center mb-4">
+              <Icon name="MessageSquare" size={28} className="text-slate-600" />
+            </div>
+            <p className="text-base font-medium text-slate-400 mb-1">Start a conversation</p>
+            <p className="text-sm text-slate-600">Send a message to interact with a ClawClip agent</p>
+          </div>
+        )}
+        {messages.map(msg => <ChatMessage key={msg.id} msg={msg} />)}
+        {loading && messages[messages.length - 1]?.role !== 'assistant' && (
+          <div className="flex gap-3 fade-in">
+            <div className="w-7 h-7 rounded-full bg-slate-700 shrink-0 flex items-center justify-center">
+              <Icon name="Bot" size={13} className="text-white" />
+            </div>
+            <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-slate-700/60 border border-slate-600/50">
+              <span className="flex gap-1">
+                {[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 bg-slate-400 rounded-full pulse" style={{animationDelay:`${i*0.2}s`}} />)}
+              </span>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input */}
+      <div className="px-4 pb-4 pt-2 shrink-0">
+        <div className="flex gap-3 items-end bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-3 focus-within:border-slate-600 transition-colors">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            rows={1}
+            placeholder="Message ClawClip… (Enter to send, Shift+Enter for newline)"
+            disabled={loading}
+            className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 resize-none max-h-32 disabled:opacity-60"
+            style={{ lineHeight: '1.5', minHeight: '22px' }}
+            onInput={e => { e.target.style.height = '22px'; e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px'; }}
+          />
+          <button
+            onClick={send}
+            disabled={!input.trim() || loading}
+            className="w-8 h-8 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all shrink-0"
+          >
+            {loading
+              ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full spin" />
+              : <Icon name="Send" size={14} className="text-white" />
+            }
+          </button>
+        </div>
+        <p className="text-slate-600 text-xs mt-1.5 text-center">Enter ↵ to send &bull; Shift+Enter for new line</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Agents Page ──────────────────────────────────────────────────────────────
+
+function AgentCard({ agent, onAction }) {
+  const [actioning, setActioning] = useState(null);
+  const toast = useToast();
+
+  const doAction = async (action) => {
+    setActioning(action);
+    try {
+      await apiFetch(`/api/agents/${agent.agent_id}/${action}`, { method: 'POST' });
+      onAction();
+      toast(`Agent ${action}d`, 'success');
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      setActioning(null);
+    }
+  };
+
+  const costStr = agent.total_cost_usd ? `$${agent.total_cost_usd.toFixed(5)}` : '$0.00000';
+  const tokStr = agent.total_tokens ? `${agent.total_tokens.toLocaleString()} tokens` : '—';
+
+  return (
+    <Card className="p-5 fade-in">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg bg-slate-700/60 flex items-center justify-center">
+            <Icon name="Bot" size={16} className="text-slate-400" />
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold">{agent.agent_type}</p>
+            <p className="text-slate-500 text-xs font-mono">{agent.agent_id.slice(0, 16)}…</p>
+          </div>
+        </div>
+        <StatusBadge status={agent.status} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="px-3 py-2 rounded-lg bg-slate-900/40 border border-slate-700/40">
+          <p className="text-slate-500 text-xs mb-0.5">Cost</p>
+          <p className="text-white text-xs font-mono">{costStr}</p>
+        </div>
+        <div className="px-3 py-2 rounded-lg bg-slate-900/40 border border-slate-700/40">
+          <p className="text-slate-500 text-xs mb-0.5">Tokens</p>
+          <p className="text-white text-xs font-mono">{tokStr}</p>
+        </div>
+      </div>
+
+      {agent.conversation_id && (
+        <p className="text-slate-500 text-xs mb-3 truncate">
+          Conversation: <span className="font-mono text-slate-400">{agent.conversation_id.slice(0, 20)}…</span>
+        </p>
+      )}
+
+      <div className="flex gap-2 flex-wrap">
+        {agent.status === 'running' && (
+          <Button variant="secondary" size="sm" onClick={() => doAction('pause')} disabled={!!actioning}>
+            {actioning === 'pause' ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full spin" /> : <Icon name="Pause" size={12} />}
+            Pause
+          </Button>
+        )}
+        {agent.status === 'paused' && (
+          <Button variant="secondary" size="sm" onClick={() => doAction('resume')} disabled={!!actioning}>
+            {actioning === 'resume' ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full spin" /> : <Icon name="Play" size={12} />}
+            Resume
+          </Button>
+        )}
+        <Button variant="danger" size="sm" onClick={async () => {
+          setActioning('cancel');
+          try {
+            await apiFetch(`/api/agents/${agent.agent_id}`, { method: 'DELETE' });
+            onAction();
+            toast('Agent cancelled', 'success');
+          } catch (e) { toast(e.message, 'error'); }
+          finally { setActioning(null); }
+        }} disabled={!!actioning || agent.status === 'cancelled'}>
+          {actioning === 'cancel' ? <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full spin" /> : <Icon name="X" size={12} />}
+          Cancel
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function AgentsPage() {
+  const { data: agents, loading, error, refetch } = useApi('/api/agents', { interval: 2000 });
+
+  if (loading) return (
+    <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 fade-in">
+      {[1,2,3].map(i => <SkeletonCard key={i} className="h-48" />)}
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-6 fade-in">
+      <Card className="p-8 flex flex-col items-center gap-3 text-center">
+        <Icon name="AlertCircle" size={32} className="text-red-400" />
+        <p className="text-white font-medium">Failed to load agents</p>
+        <p className="text-slate-400 text-sm">{error}</p>
+        <Button variant="secondary" size="sm" onClick={refetch}>Retry</Button>
+      </Card>
+    </div>
+  );
+
+  if (!agents || agents.length === 0) return (
+    <div className="p-6 fade-in">
+      <Card className="p-12 flex flex-col items-center gap-3 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mb-2">
+          <Icon name="Bot" size={28} className="text-slate-600" />
+        </div>
+        <p className="text-white font-medium text-base">No agents running</p>
+        <p className="text-slate-500 text-sm">Agent instances will appear here when tasks are running</p>
+      </Card>
+    </div>
+  );
+
+  return (
+    <div className="p-6 fade-in">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <p className="text-slate-400 text-sm">{agents.length} instance{agents.length !== 1 ? 's' : ''}</p>
+          <span className="text-xs text-slate-600">· live updates every 2s</span>
+        </div>
+        <Button variant="ghost" size="sm" onClick={refetch}>
+          <Icon name="RefreshCw" size={13} />
+          Refresh
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {agents.map(a => <AgentCard key={a.agent_id} agent={a} onAction={refetch} />)}
+      </div>
+    </div>
+  );
+}
+
+// ─── Skills Page ──────────────────────────────────────────────────────────────
+
+function SkillCard({ skill }) {
+  return (
+    <Card className="p-5 fade-in hover:border-slate-600/60 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${skill.enabled ? 'bg-red-600/20 border border-red-600/30' : 'bg-slate-700/60'}`}>
+            <Icon name="Puzzle" size={16} className={skill.enabled ? 'text-red-400' : 'text-slate-500'} />
+          </div>
+          <div>
+            <p className="text-white text-sm font-semibold">{skill.name}</p>
+            <StatusBadge status={skill.enabled ? 'active' : 'idle'} />
+          </div>
+        </div>
+      </div>
+
+      {skill.description && (
+        <p className="text-slate-400 text-xs leading-relaxed mb-3 line-clamp-2">{skill.description}</p>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-900/40 border border-slate-700/40 text-xs text-slate-400">
+          <Icon name="Wrench" size={11} />
+          {skill.tool_count} tool{skill.tool_count !== 1 ? 's' : ''}
+        </span>
+        {skill.trigger_count > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-900/40 border border-slate-700/40 text-xs text-slate-400">
+            <Icon name="Zap" size={11} />
+            {skill.trigger_count} trigger{skill.trigger_count !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function SkillsPage() {
+  const { data: skills, loading, error, refetch } = useApi('/api/skills');
+  const [filter, setFilter] = useState('');
+
+  const filtered = useMemo(() =>
+    (skills || []).filter(s => s.name.toLowerCase().includes(filter.toLowerCase()) ||
+      (s.description || '').toLowerCase().includes(filter.toLowerCase())),
+    [skills, filter]
+  );
+
+  if (loading) return (
+    <div className="p-6 fade-in">
+      <div className="skeleton h-9 rounded-lg mb-4 max-w-xs" />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {[1,2,3,4,5,6].map(i => <SkeletonCard key={i} className="h-36" />)}
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-6">
+      <Card className="p-8 flex flex-col items-center gap-3 text-center fade-in">
+        <Icon name="AlertCircle" size={32} className="text-red-400" />
+        <p className="text-white font-medium">Failed to load skills</p>
+        <p className="text-slate-400 text-sm">{error}</p>
+        <Button variant="secondary" size="sm" onClick={refetch}>Retry</Button>
+      </Card>
+    </div>
+  );
+
+  return (
+    <div className="p-6 fade-in">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-xs">
+          <Icon name="Search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+          <input
+            type="text"
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            placeholder="Filter skills…"
+            className="w-full bg-slate-800 border border-slate-600 rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:border-red-500 transition-colors"
+          />
+        </div>
+        <p className="text-slate-400 text-sm">{filtered.length} of {(skills || []).length} skills</p>
+      </div>
+
+      {filtered.length === 0 ? (
+        <Card className="p-12 flex flex-col items-center gap-3 text-center">
+          <Icon name="Puzzle" size={32} className="text-slate-600" />
+          <p className="text-white font-medium">{filter ? 'No matching skills' : 'No skills registered'}</p>
+          <p className="text-slate-500 text-sm">{filter ? 'Try a different search term' : 'Skills will appear here once loaded'}</p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map(s => <SkillCard key={s.name} skill={s} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Settings Page ────────────────────────────────────────────────────────────
+
+function Toggle({ checked, onChange, disabled }) {
+  return (
+    <button
+      onClick={() => !disabled && onChange(!checked)}
+      disabled={disabled}
+      className={`relative w-10 h-5.5 rounded-full transition-all duration-200 shrink-0 focus:outline-none
+        ${checked ? 'bg-red-600' : 'bg-slate-600'} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      style={{ height: '22px', width: '40px' }}
+      role="switch"
+      aria-checked={checked}
+    >
+      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200
+        ${checked ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+    </button>
+  );
+}
+
+function SettingsPage() {
+  const toast = useToast();
+  const { data: features, loading, error, refetch } = useApi('/api/settings/features');
+  const [pending, setPending] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  // Merge saved features with pending overrides
+  const merged = useMemo(() => ({ ...(features || {}), ...pending }), [features, pending]);
+
+  const setFeature = (key, val) => setPending(p => ({ ...p, [key]: val }));
+  const hasChanges = Object.keys(pending).length > 0;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await apiFetch('/api/settings/features', {
+        method: 'PUT',
+        body: JSON.stringify({ features: pending }),
+      });
+      toast('Settings saved', 'success');
+      setPending({});
+      refetch();
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="p-6 fade-in">
+      <div className="flex flex-col gap-3">
+        {[1,2,3,4,5].map(i => <div key={i} className="skeleton h-14 rounded-lg" />)}
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="p-6">
+      <Card className="p-8 flex flex-col items-center gap-3 text-center fade-in">
+        <Icon name="AlertCircle" size={32} className="text-red-400" />
+        <p className="text-white font-medium">Failed to load settings</p>
+        <p className="text-slate-400 text-sm">{error}</p>
+        <Button variant="secondary" size="sm" onClick={refetch}>Retry</Button>
+      </Card>
+    </div>
+  );
+
+  const featureKeys = Object.keys(merged);
+
+  // Group features heuristically by prefix
+  const groups = useMemo(() => {
+    const g = {};
+    featureKeys.forEach(k => {
+      const parts = k.split('_');
+      const prefix = parts.length > 1 ? parts[0] : 'general';
+      if (!g[prefix]) g[prefix] = [];
+      g[prefix].push(k);
     });
-  </script>
+    return g;
+  }, [featureKeys]);
+
+  return (
+    <div className="p-6 fade-in">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-white font-semibold">Feature Toggles</h2>
+          <p className="text-slate-400 text-sm mt-0.5">Enable or disable platform features</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasChanges && (
+            <Button variant="ghost" size="sm" onClick={() => setPending({})}>
+              <Icon name="RotateCcw" size={13} />
+              Reset
+            </Button>
+          )}
+          <Button variant="primary" size="sm" onClick={save} disabled={!hasChanges || saving}>
+            {saving ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full spin" /> : <Icon name="Save" size={13} />}
+            {saving ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </div>
+      </div>
+
+      {featureKeys.length === 0 ? (
+        <Card className="p-10 flex flex-col items-center gap-3 text-center">
+          <Icon name="Settings" size={32} className="text-slate-600" />
+          <p className="text-white font-medium">No feature flags configured</p>
+          <p className="text-slate-500 text-sm">Feature toggles will appear here once features are defined in the config</p>
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {Object.entries(groups).map(([group, keys]) => (
+            <Card key={group} className="overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-700/50 bg-slate-800/40">
+                <p className="text-sm font-semibold text-slate-300 capitalize">{group}</p>
+              </div>
+              <div className="divide-y divide-slate-700/30">
+                {keys.map(key => (
+                  <div key={key} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-700/20 transition-colors">
+                    <div className="min-w-0 mr-4">
+                      <p className="text-sm text-white font-medium">{key.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-slate-500 font-mono">{key}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {key in pending && (
+                        <span className="text-xs text-amber-400 font-medium">unsaved</span>
+                      )}
+                      <Toggle checked={!!merged[key]} onChange={val => setFeature(key, val)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Danger Zone / API Links */}
+      <Card className="mt-6 p-5">
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <Icon name="ExternalLink" size={14} className="text-slate-400" />
+          API &amp; Documentation
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { href: '/api/docs', label: 'Swagger UI', desc: 'Interactive API explorer' },
+            { href: '/api/redoc', label: 'ReDoc', desc: 'API reference docs' },
+            { href: '/api/openapi.json', label: 'OpenAPI Schema', desc: 'Machine-readable spec' },
+          ].map(link => (
+            <a key={link.href} href={link.href} target="_blank" rel="noreferrer"
+               className="flex flex-col gap-0.5 px-4 py-3 rounded-lg border border-slate-700/60 hover:border-slate-600 hover:bg-slate-700/20 transition-all group">
+              <span className="text-sm font-medium text-slate-200 group-hover:text-white">{link.label}</span>
+              <span className="text-xs text-slate-500">{link.desc}</span>
+            </a>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── App Router ───────────────────────────────────────────────────────────────
+
+function App() {
+  const [authed, setAuthed] = useState(!!getToken());
+  const [page, setPage] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    return PAGES.includes(hash) ? hash : 'dashboard';
+  });
+  const [collapsed, setCollapsed] = useState(false);
+  const [username, setUsername] = useState('');
+
+  // Sync hash
+  useEffect(() => {
+    window.location.hash = page;
+  }, [page]);
+
+  // Handle hash changes from browser nav
+  useEffect(() => {
+    const onHash = () => {
+      const h = window.location.hash.replace('#', '');
+      if (PAGES.includes(h)) setPage(h);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  // Fetch current user
+  useEffect(() => {
+    if (!authed) return;
+    apiFetch('/api/auth/me').then(u => setUsername(u?.username || 'admin')).catch(() => {});
+  }, [authed]);
+
+  if (!authed) return (
+    <ToastProvider>
+      <Login onLogin={() => setAuthed(true)} />
+    </ToastProvider>
+  );
+
+  const logout = () => {
+    clearToken();
+    setAuthed(false);
+  };
+
+  const pageComponents = {
+    dashboard: <DashboardPage />,
+    chat:      <ChatPage />,
+    agents:    <AgentsPage />,
+    skills:    <SkillsPage />,
+    settings:  <SettingsPage />,
+  };
+
+  return (
+    <ToastProvider>
+      <div className="flex" style={{ minHeight: '100vh' }}>
+        <Sidebar page={page} setPage={setPage} onLogout={logout} collapsed={collapsed} setCollapsed={setCollapsed} />
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden" style={{ maxHeight: '100vh', overflowY: 'auto' }}>
+          <Header page={page} username={username} />
+          <main className="flex-1">
+            {pageComponents[page] || pageComponents.dashboard}
+          </main>
+        </div>
+      </div>
+    </ToastProvider>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
 </body>
 </html>

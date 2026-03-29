@@ -23,6 +23,7 @@ class SkillLoader:
         "clawclip.skills.builtin.screenshot",
         "clawclip.skills.builtin.web_search",
         "clawclip.skills.builtin.services",
+        "clawclip.skills.builtin.browser",
     ]
 
     _DEVELOPER_MODULES = [

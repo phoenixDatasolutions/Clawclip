@@ -68,13 +68,17 @@ knowledge = [
     "chromadb>=0.5,<1",
     "sentence-transformers>=3.0,<4",
 ]
+redis = ["redis[asyncio]>=5.0,<6"]
+pinecone = ["pinecone-client>=3.0,<4"]
+weaviate = ["weaviate-client>=4.0,<5"]
 scheduler = ["apscheduler>=3.10,<4"]
 mcp-support = ["mcp>=1.0,<2"]
 sandbox = ["docker>=7.0,<8"]
+browser = ["playwright>=1.40"]
 
 # --- Bundles ---
 all = [
-    "clawclip[telegram,discord,slack,dashboard,cli-rich,claude-api,openai,gemini,ollama,knowledge,scheduler,mcp-support,sandbox]",
+    "clawclip[telegram,discord,slack,dashboard,cli-rich,claude-api,openai,gemini,ollama,knowledge,redis,pinecone,weaviate,scheduler,mcp-support,sandbox,browser]",
 ]
 minimal = [
     "clawclip[telegram,claude-api,dashboard]",

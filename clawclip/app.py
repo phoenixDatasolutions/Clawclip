@@ -42,6 +42,7 @@ class NexusApp:
         self.company_manager = None
         self._tasks: list[asyncio.Task] = []
         self._running = False
+        self.cache: Any = None
 
     async def initialize(self) -> None:
         cfg = self.config
@@ -55,26 +56,37 @@ class NexusApp:
         self.container.register("db", self.db)
         logger.info("Database initialized: %s", db_url)
 
+        # ── Cache (Redis or in-memory fallback) ────────────────────
+        from clawclip.storage.redis_cache import RedisCache
+        cache_url = cfg.get("storage.cache.redis_url", "redis://localhost:6379")
+        self.cache = await RedisCache.create(cache_url)
+        self.container.register("cache", self.cache)
+
         # ── 2. Skills ──────────────────────────────────────────────
-        self.skill_manager = SkillManager()
+        skill_registry: Registry = Registry("skills")
         loader = SkillLoader()
         for skill in loader.discover_builtin_skills():
-            self.skill_manager.register(skill)
+            skill_registry.register(skill.name, skill)
         if cfg.get("features.developer_skills.enabled", True):
             for skill in loader.discover_developer_skills():
-                self.skill_manager.register(skill)
+                skill_registry.register(skill.name, skill)
+        self.skill_manager = SkillManager(skill_registry, event_bus=self.event_bus)
+        self.skill_manager.build_index()
         self.container.register("skill_manager", self.skill_manager)
-        logger.info("Skills loaded: %d registered", len(self.skill_manager.list_skills()))
+        logger.info("Skills loaded: %d registered", len(skill_registry))
 
         # ── 3. LLM Providers ───────────────────────────────────────
         await self._init_providers()
 
         # ── 4. Agent Engine ────────────────────────────────────────
-        default_provider = next(iter(self.providers.values()), None)
+        provider_registry: Registry = Registry("providers")
+        for name, p in self.providers.items():
+            provider_registry.register(name, p)
         self.agent_engine = AgentEngine(
-            skill_manager=self.skill_manager,
-            provider=default_provider,
             event_bus=self.event_bus,
+            provider_registry=provider_registry,
+            skill_manager=self.skill_manager,
+            storage=self.db,
         )
         self.container.register("agent_engine", self.agent_engine)
         logger.info("Agent engine initialized")
@@ -349,18 +361,27 @@ class NexusApp:
             except Exception as e:
                 logger.warning("MCP server start failed: %s", e)
 
-        # Start dashboard server
+        # Start dashboard server in a background thread (avoids lifespan/asyncio
+        # conflicts on Windows with Python 3.12+)
         if self.dashboard_app:
             cfg = self.config
             host = cfg.get("features.dashboard.host", "0.0.0.0")
-            port = cfg.get("features.dashboard.port", 8080)
+            port = int(cfg.get("features.dashboard.port", 8080))
             try:
+                import threading
                 import uvicorn
-                config = uvicorn.Config(self.dashboard_app, host=host, port=port, log_level="warning")
-                server = uvicorn.Server(config)
-                task = asyncio.create_task(server.serve(), name="dashboard")
-                self._tasks.append(task)
-                logger.info("Dashboard running at http://%s:%d", host, port)
+
+                def _run_uvicorn() -> None:
+                    uvicorn.run(
+                        self.dashboard_app,
+                        host=host,
+                        port=port,
+                        log_level="warning",
+                    )
+
+                thread = threading.Thread(target=_run_uvicorn, daemon=True, name="dashboard")
+                thread.start()
+                logger.info("Dashboard running at http://localhost:%d", port)
             except ImportError:
                 logger.warning("uvicorn not installed — dashboard not started")
             except Exception as e:

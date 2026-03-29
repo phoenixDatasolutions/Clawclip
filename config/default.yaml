@@ -18,6 +18,13 @@ database:
   echo: false
   pool_size: 5
 
+# ── Storage / Cache ─────────────────────────────────────────────
+storage:
+  cache:
+    backend: "memory"   # "memory" or "redis"
+    redis_url: "${REDIS_URL:redis://localhost:6379}"
+    default_ttl: 3600
+
 # ── Messaging Platforms ─────────────────────────────────────────
 platforms:
   telegram:
