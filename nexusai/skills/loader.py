@@ -33,6 +33,8 @@ class SkillLoader:
         "nexusai.skills.developer.log_analysis",
         "nexusai.skills.developer.db_ops",
         "nexusai.skills.developer.api_testing",
+        "nexusai.skills.developer.qa",
+        "nexusai.skills.developer.automation",
     ]
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:

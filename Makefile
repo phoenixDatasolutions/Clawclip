@@ -1,4 +1,4 @@
-.PHONY: install dev run setup test lint format clean docker-up docker-down
+.PHONY: install dev run setup test test-integration test-all test-cov test-fast lint format clean docker-up docker-down
 
 # One-step install
 install:
@@ -28,11 +28,24 @@ run:
 
 # Run tests
 test:
-	.venv/Scripts/pytest tests/ -v
+	pytest tests/unit/ -v --tb=short
+
+test-integration:
+	pytest tests/integration/ -v --tb=short
+
+test-all:
+	pytest tests/ -v --tb=short --ignore=tests/e2e
+
+test-cov:
+	pytest tests/unit/ --cov=nexusai --cov-report=term-missing --cov-report=html:htmlcov -v
+
+test-fast:
+	pytest tests/unit/ -x -q --tb=line
 
 # Lint
 lint:
-	.venv/Scripts/ruff check nexusai/ tests/
+	ruff check nexusai/ tests/
+	ruff format --check nexusai/ tests/
 
 # Format
 format:
