@@ -1,4 +1,4 @@
-"""NexusApp — application bootstrap that initializes and wires all modules."""
+"""ClawClip App — application bootstrap that initializes and wires all modules."""
 from __future__ import annotations
 
 import asyncio
