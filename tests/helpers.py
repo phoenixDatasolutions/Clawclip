@@ -2,7 +2,7 @@
 from __future__ import annotations
 import asyncio
 from typing import Any
-from nexusai.core.events import EventBus, Event
+from clawclip.core.events import EventBus, Event
 
 
 async def collect_events(event_bus: EventBus, event_type: type, count: int, timeout: float = 2.0) -> list:

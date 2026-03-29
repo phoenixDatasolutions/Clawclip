@@ -1,17 +1,17 @@
-"""Unit tests for nexusai.replay.recorder.ExecutionRecorder."""
+"""Unit tests for clawclip.replay.recorder.ExecutionRecorder."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
 import pytest
 
-from nexusai.core.events import (
+from clawclip.core.events import (
     AgentTaskCompleted,
     AgentTaskStarted,
     EventBus,
 )
-from nexusai.core.types import ExecutionTrace
-from nexusai.replay.recorder import ExecutionRecorder
+from clawclip.core.types import ExecutionTrace
+from clawclip.replay.recorder import ExecutionRecorder
 
 
 # ---------------------------------------------------------------------------

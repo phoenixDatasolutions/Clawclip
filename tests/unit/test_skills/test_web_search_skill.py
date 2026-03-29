@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from nexusai.skills.builtin.web_search import WebSearchSkill
-from nexusai.core.types import SkillContext
+from clawclip.skills.builtin.web_search import WebSearchSkill
+from clawclip.core.types import SkillContext
 
 pytestmark = pytest.mark.unit
 
@@ -84,8 +84,8 @@ class TestWebSearchSkillSearch:
         mock_cm = _make_async_client_cm(_mock_response(tavily_payload))
 
         with (
-            patch("nexusai.skills.builtin.web_search._HTTPX_AVAILABLE", True),
-            patch("nexusai.skills.builtin.web_search.httpx") as mock_httpx,
+            patch("clawclip.skills.builtin.web_search._HTTPX_AVAILABLE", True),
+            patch("clawclip.skills.builtin.web_search.httpx") as mock_httpx,
         ):
             mock_httpx.AsyncClient.return_value = mock_cm
 
@@ -107,8 +107,8 @@ class TestWebSearchSkillSearch:
         mock_cm = _make_async_client_cm(_mock_response(ddg_payload))
 
         with (
-            patch("nexusai.skills.builtin.web_search._HTTPX_AVAILABLE", True),
-            patch("nexusai.skills.builtin.web_search.httpx") as mock_httpx,
+            patch("clawclip.skills.builtin.web_search._HTTPX_AVAILABLE", True),
+            patch("clawclip.skills.builtin.web_search.httpx") as mock_httpx,
         ):
             mock_httpx.AsyncClient.return_value = mock_cm
 
@@ -124,8 +124,8 @@ class TestWebSearchSkillSearch:
         mock_cm = _make_async_client_cm(_mock_response(empty_payload))
 
         with (
-            patch("nexusai.skills.builtin.web_search._HTTPX_AVAILABLE", True),
-            patch("nexusai.skills.builtin.web_search.httpx") as mock_httpx,
+            patch("clawclip.skills.builtin.web_search._HTTPX_AVAILABLE", True),
+            patch("clawclip.skills.builtin.web_search.httpx") as mock_httpx,
         ):
             mock_httpx.AsyncClient.return_value = mock_cm
 
@@ -157,8 +157,8 @@ class TestWebSearchSkillFetchUrl:
         cm.__aexit__ = AsyncMock(return_value=False)
 
         with (
-            patch("nexusai.skills.builtin.web_search._HTTPX_AVAILABLE", True),
-            patch("nexusai.skills.builtin.web_search.httpx") as mock_httpx,
+            patch("clawclip.skills.builtin.web_search._HTTPX_AVAILABLE", True),
+            patch("clawclip.skills.builtin.web_search.httpx") as mock_httpx,
         ):
             mock_httpx.AsyncClient.return_value = cm
 
@@ -182,8 +182,8 @@ class TestWebSearchSkillTriggers:
         mock_cm = _make_async_client_cm(_mock_response(ddg_payload))
 
         with (
-            patch("nexusai.skills.builtin.web_search._HTTPX_AVAILABLE", True),
-            patch("nexusai.skills.builtin.web_search.httpx") as mock_httpx,
+            patch("clawclip.skills.builtin.web_search._HTTPX_AVAILABLE", True),
+            patch("clawclip.skills.builtin.web_search.httpx") as mock_httpx,
         ):
             mock_httpx.AsyncClient.return_value = mock_cm
 

@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.core.events — EventBus publish/subscribe system."""
+"""Unit tests for clawclip.core.events — EventBus publish/subscribe system."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from nexusai.core.events import (
+from clawclip.core.events import (
     AgentTaskStarted,
     EventBus,
     MessageReceived,

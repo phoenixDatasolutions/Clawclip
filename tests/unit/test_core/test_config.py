@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.core.config — NexusConfig YAML loader."""
+"""Unit tests for clawclip.core.config — NexusConfig YAML loader."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from nexusai.core.config import NexusConfig, _deep_merge, _interpolate_env_vars
+from clawclip.core.config import NexusConfig, _deep_merge, _interpolate_env_vars
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -21,11 +21,11 @@ def _write(path, text: str) -> None:
 
 def test_load_default_yaml(tmp_path) -> None:
     """Config loads values from default.yaml correctly."""
-    _write(tmp_path / "default.yaml", "app:\n  name: NexusAI\n  debug: false\n")
+    _write(tmp_path / "default.yaml", "app:\n  name: ClawClip\n  debug: false\n")
     cfg = NexusConfig(config_dir=tmp_path)
     cfg.load()
 
-    assert cfg.get("app.name") == "NexusAI"
+    assert cfg.get("app.name") == "ClawClip"
     assert cfg.get("app.debug") is False
 
 

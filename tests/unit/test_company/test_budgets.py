@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.company.budgets — BudgetManager."""
+"""Unit tests for clawclip.company.budgets — BudgetManager."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nexusai.company.budgets import BudgetManager
-from nexusai.company.models import Budget, Ticket
+from clawclip.company.budgets import BudgetManager
+from clawclip.company.models import Budget, Ticket
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ async def test_80_percent_warning(caplog) -> None:
     )
     mgr, _ = _make_manager("co5", initial_budget=budget)
 
-    with caplog.at_level(logging.WARNING, logger="nexusai.company.budgets"):
+    with caplog.at_level(logging.WARNING, logger="clawclip.company.budgets"):
         await mgr.record_cost("analyst", 8.0)  # exactly 80%
 
     assert await mgr.is_throttled("analyst") is False

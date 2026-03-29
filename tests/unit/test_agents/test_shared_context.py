@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.agents.context — SharedContext key-value store."""
+"""Unit tests for clawclip.agents.context — SharedContext key-value store."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from nexusai.agents.context import SharedContext
+from clawclip.agents.context import SharedContext
 
 
 # ── Tests ────────────────────────────────────────────────────────────────────

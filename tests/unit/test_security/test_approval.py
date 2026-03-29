@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.security.approval — ApprovalWorkflow."""
+"""Unit tests for clawclip.security.approval — ApprovalWorkflow."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from nexusai.security.approval import ApprovalWorkflow, requires_approval
+from clawclip.security.approval import ApprovalWorkflow, requires_approval
 
 
 # ── requires_approval tests ───────────────────────────────────────────────────

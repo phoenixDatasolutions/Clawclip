@@ -1,10 +1,10 @@
-"""Unit tests for nexusai.workflows.context — WorkflowContext template engine."""
+"""Unit tests for clawclip.workflows.context — WorkflowContext template engine."""
 
 from __future__ import annotations
 
 import pytest
 
-from nexusai.workflows.context import WorkflowContext
+from clawclip.workflows.context import WorkflowContext
 
 
 def _ctx(**kwargs) -> WorkflowContext:
@@ -29,15 +29,15 @@ class TestWorkflowContext:
 
     def test_template_variable(self) -> None:
         """${{ variables.name }} resolves to the matching workflow variable."""
-        ctx = _ctx(variables={"name": "NexusAI"})
+        ctx = _ctx(variables={"name": "ClawClip"})
         resolved = ctx.resolve_template("${{ variables.name }}")
-        assert resolved == "NexusAI"
+        assert resolved == "ClawClip"
 
     def test_template_trigger_data(self) -> None:
         """${{ trigger.repo }} resolves to the trigger data field."""
-        ctx = _ctx(trigger_data={"repo": "nexusai/core"})
+        ctx = _ctx(trigger_data={"repo": "clawclip/core"})
         resolved = ctx.resolve_template("${{ trigger.repo }}")
-        assert resolved == "nexusai/core"
+        assert resolved == "clawclip/core"
 
     def test_unknown_template_preserved(self) -> None:
         """An unresolvable placeholder is kept as-is in the output."""

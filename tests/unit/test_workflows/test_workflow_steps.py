@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.workflows.steps — individual step executors."""
+"""Unit tests for clawclip.workflows.steps — individual step executors."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nexusai.core.enums import WorkflowStepType
-from nexusai.core.types import SkillResult
-from nexusai.workflows.context import WorkflowContext
-from nexusai.workflows.steps import (
+from clawclip.core.enums import WorkflowStepType
+from clawclip.core.types import SkillResult
+from clawclip.workflows.context import WorkflowContext
+from clawclip.workflows.steps import (
     WorkflowStepDef,
     execute_condition,
     execute_llm_call,

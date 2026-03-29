@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.company.tickets — TicketSystem."""
+"""Unit tests for clawclip.company.tickets — TicketSystem."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ from uuid import uuid4
 
 import pytest
 
-from nexusai.company.models import Ticket, TicketEvent
-from nexusai.company.tickets import TicketSystem
-from nexusai.core.events import EventBus
+from clawclip.company.models import Ticket, TicketEvent
+from clawclip.company.tickets import TicketSystem
+from clawclip.core.events import EventBus
 
 
 # ── Fixtures / helpers ────────────────────────────────────────────────────────

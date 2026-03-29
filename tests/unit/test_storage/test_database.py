@@ -1,11 +1,11 @@
-"""Unit tests for nexusai.storage.database.Database."""
+"""Unit tests for clawclip.storage.database.Database."""
 from __future__ import annotations
 
 import pytest
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from nexusai.storage.database import Database
+from clawclip.storage.database import Database
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ class TestDatabaseSession:
 
     async def test_session_commits_on_success(self, mem_db: Database):
         """Data written inside a successful session block must be persisted."""
-        from nexusai.storage.models.user import User
+        from clawclip.storage.models.user import User
 
         # Write a user inside one session
         user_id: str = ""
@@ -94,7 +94,7 @@ class TestDatabaseSession:
 
     async def test_session_rolls_back_on_error(self, mem_db: Database):
         """An exception inside the session block must trigger a rollback."""
-        from nexusai.storage.models.user import User
+        from clawclip.storage.models.user import User
 
         user_id: str = ""
         with pytest.raises(ValueError, match="oops"):
@@ -112,7 +112,7 @@ class TestDatabaseSession:
 
     async def test_multiple_sessions_independent(self, mem_db: Database):
         """Two independent sessions must not interfere with each other."""
-        from nexusai.storage.models.user import User
+        from clawclip.storage.models.user import User
 
         async with mem_db.session() as s1:
             u1 = User(display_name="S1User", role="user")

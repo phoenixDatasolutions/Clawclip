@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from nexusai.skills.builtin.monitor import SystemMonitorSkill
-from nexusai.core.types import SkillContext
+from clawclip.skills.builtin.monitor import SystemMonitorSkill
+from clawclip.core.types import SkillContext
 
 pytestmark = pytest.mark.unit
 
@@ -62,8 +62,8 @@ def psutil_mock():
     # Patch at both the module-attribute level and in the skill's module namespace
     with (
         patch.dict(sys.modules, {"psutil": mock}),
-        patch("nexusai.skills.builtin.monitor.psutil", mock),
-        patch("nexusai.skills.builtin.monitor._PSUTIL_AVAILABLE", True),
+        patch("clawclip.skills.builtin.monitor.psutil", mock),
+        patch("clawclip.skills.builtin.monitor._PSUTIL_AVAILABLE", True),
     ):
         yield mock
 
@@ -102,7 +102,7 @@ class TestSystemMonitorSkillExecution:
         assert len(skill.tools) == 5
 
     async def test_graceful_no_psutil(self, skill, context):
-        with patch("nexusai.skills.builtin.monitor._PSUTIL_AVAILABLE", False):
+        with patch("clawclip.skills.builtin.monitor._PSUTIL_AVAILABLE", False):
             result = await skill.execute("get_system_info", {}, context)
         assert result.success is False
         assert "psutil" in result.output.lower()

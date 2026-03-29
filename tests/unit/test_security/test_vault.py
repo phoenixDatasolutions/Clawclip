@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.security.vault — CredentialVault."""
+"""Unit tests for clawclip.security.vault — CredentialVault."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from cryptography.fernet import Fernet
 
-from nexusai.security.vault import CredentialVault
+from clawclip.security.vault import CredentialVault
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ async def test_store_and_retrieve() -> None:
     session = _mock_session()
 
     # store() tries to look up existing record first — return None (not found)
-    from nexusai.security.vault import EncryptedCredential
+    from clawclip.security.vault import EncryptedCredential
 
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
@@ -118,7 +118,7 @@ async def test_delete() -> None:
     session = _mock_session()
 
     # Simulate an existing record
-    from nexusai.security.vault import EncryptedCredential
+    from clawclip.security.vault import EncryptedCredential
 
     stored_obj = MagicMock(spec=EncryptedCredential)
     stored_obj.encrypted_value = vault.encrypt("to-be-deleted")
@@ -172,7 +172,7 @@ async def test_store_updates_existing() -> None:
     vault = _make_vault()
     session = _mock_session()
 
-    from nexusai.security.vault import EncryptedCredential
+    from clawclip.security.vault import EncryptedCredential
 
     existing = MagicMock(spec=EncryptedCredential)
     existing.encrypted_value = vault.encrypt("old-value")

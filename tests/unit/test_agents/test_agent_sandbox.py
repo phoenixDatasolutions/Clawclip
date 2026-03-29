@@ -1,11 +1,11 @@
-"""Unit tests for nexusai.agents.sandbox — AgentSandbox permission enforcement."""
+"""Unit tests for clawclip.agents.sandbox — AgentSandbox permission enforcement."""
 
 from __future__ import annotations
 
 import pytest
 
-from nexusai.agents.sandbox import AgentSandbox
-from nexusai.core.types import ToolDefinition
+from clawclip.agents.sandbox import AgentSandbox
+from clawclip.core.types import ToolDefinition
 
 
 def _tool(name: str, permissions: list[str] | None = None) -> ToolDefinition:

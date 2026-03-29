@@ -6,7 +6,7 @@ import textwrap
 
 import pytest
 
-from nexusai.skills.loader import SkillLoader
+from clawclip.skills.loader import SkillLoader
 
 pytestmark = pytest.mark.unit
 
@@ -53,7 +53,7 @@ class TestSkillLoaderDirectory:
         skill_src = textwrap.dedent(
             """\
             from __future__ import annotations
-            from nexusai.core.types import SkillContext, SkillResult, ToolDefinition
+            from clawclip.core.types import SkillContext, SkillResult, ToolDefinition
 
             class TestSkill:
                 @property

@@ -70,8 +70,8 @@ async def client(nexus_config):
     which call ``nexus_app.db.session()`` work correctly and return empty lists
     rather than raising AttributeError.
     """
-    from nexusai.dashboard.app import create_dashboard_app
-    from nexusai.storage.database import Database
+    from clawclip.dashboard.app import create_dashboard_app
+    from clawclip.storage.database import Database
 
     db = Database("sqlite+aiosqlite:///:memory:")
     await db.initialize()
@@ -92,7 +92,7 @@ async def client(nexus_config):
 @pytest.fixture
 def auth_token(nexus_config):
     """Valid JWT signed with the same secret the dashboard routes use."""
-    from nexusai.dashboard.auth import create_access_token
+    from clawclip.dashboard.auth import create_access_token
 
     wrapped = _DualPathConfig(nexus_config)
     secret = wrapped.get("dashboard.jwt_secret", "change-me-in-local-yaml")
@@ -125,7 +125,7 @@ class TestSystemEndpoints:
         assert resp.status_code == 200
         data = resp.json()
         assert "version" in data
-        assert data["app_name"] == "NexusAI"
+        assert data["app_name"] == "ClawClip"
         assert "python_version" in data
 
     async def test_system_version_no_auth(self, client: AsyncClient):

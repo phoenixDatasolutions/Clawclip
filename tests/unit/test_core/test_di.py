@@ -1,10 +1,10 @@
-"""Unit tests for nexusai.core.di — DI Container."""
+"""Unit tests for clawclip.core.di — DI Container."""
 
 from __future__ import annotations
 
 import pytest
 
-from nexusai.core.di import Container
+from clawclip.core.di import Container
 
 
 # ── test_register_and_resolve ─────────────────────────────────────────────────

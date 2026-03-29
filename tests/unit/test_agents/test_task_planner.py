@@ -1,11 +1,11 @@
-"""Unit tests for nexusai.agents.planner — TaskPlanner DAG decomposition."""
+"""Unit tests for clawclip.agents.planner — TaskPlanner DAG decomposition."""
 
 from __future__ import annotations
 
 import pytest
 
 from tests.conftest import FakeLLMProvider
-from nexusai.agents.planner import SubTask, TaskPlanner, _has_cycle, _topological_sort
+from clawclip.agents.planner import SubTask, TaskPlanner, _has_cycle, _topological_sort
 
 
 FAKE_PLAN_RESPONSE = """

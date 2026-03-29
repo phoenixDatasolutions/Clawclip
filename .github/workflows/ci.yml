@@ -20,10 +20,10 @@ jobs:
       - name: Install core dependencies
         run: pip install -e ".[core]"
       - name: Lint with ruff
-        run: pip install ruff && ruff check nexusai/
+        run: pip install ruff && ruff check clawclip/
         continue-on-error: true
       - name: Import check
-        run: python -c "import nexusai; print('Import OK')"
+        run: python -c "import clawclip; print('Import OK')"
       - name: Run tests
         run: |
           pip install pytest pytest-asyncio

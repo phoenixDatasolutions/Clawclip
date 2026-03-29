@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for NexusAI test suite."""
+"""Shared pytest fixtures for ClawClip test suite."""
 from __future__ import annotations
 
 import asyncio
@@ -12,9 +12,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 
-from nexusai.core.events import EventBus
-from nexusai.core.registry import Registry
-from nexusai.core.types import (
+from clawclip.core.events import EventBus
+from clawclip.core.registry import Registry
+from clawclip.core.types import (
     AgentConfig,
     AgentContext,
     AgentResult,
@@ -28,7 +28,7 @@ from nexusai.core.types import (
     ToolDefinition,
     UsageStats,
 )
-from nexusai.core.enums import AgentStatus, MessageRole
+from clawclip.core.enums import AgentStatus, MessageRole
 
 
 # ── Fake LLM Provider ────────────────────────────────────────────
@@ -189,10 +189,10 @@ def task_request() -> TaskRequest:
 
 @pytest.fixture
 def skill_manager(event_bus):
-    from nexusai.skills.manager import SkillManager
-    from nexusai.skills.builtin.shell import ShellSkill
-    from nexusai.skills.builtin.files import FileSkill
-    from nexusai.skills.builtin.git import GitSkill
+    from clawclip.skills.manager import SkillManager
+    from clawclip.skills.builtin.shell import ShellSkill
+    from clawclip.skills.builtin.files import FileSkill
+    from clawclip.skills.builtin.git import GitSkill
 
     skill_registry = Registry("skills")
     skill_registry.register("shell", ShellSkill())
@@ -208,7 +208,7 @@ def skill_manager(event_bus):
 
 @pytest.fixture
 def agent_engine(event_bus, provider_registry, skill_manager):
-    from nexusai.agents.engine import AgentEngine
+    from clawclip.agents.engine import AgentEngine
     return AgentEngine(
         event_bus=event_bus,
         provider_registry=provider_registry,
@@ -221,7 +221,7 @@ def agent_engine(event_bus, provider_registry, skill_manager):
 @pytest_asyncio.fixture
 async def db():
     """In-memory SQLite database for tests."""
-    from nexusai.storage.database import Database
+    from clawclip.storage.database import Database
     database = Database("sqlite+aiosqlite:///:memory:")
     await database.initialize()
     yield database
@@ -245,7 +245,7 @@ def config_dir(tmp_path):
     default = config / "default.yaml"
     default.write_text("""
 app:
-  name: "NexusAI Test"
+  name: "ClawClip Test"
   debug: true
 
 storage:
@@ -297,7 +297,7 @@ providers:
 
 @pytest.fixture
 def nexus_config(config_dir):
-    from nexusai.core.config import NexusConfig
+    from clawclip.core.config import NexusConfig
     return NexusConfig(str(config_dir))
 
 
@@ -305,14 +305,14 @@ def nexus_config(config_dir):
 
 @pytest_asyncio.fixture
 async def company_store():
-    from nexusai.company.store import CompanyStore
+    from clawclip.company.store import CompanyStore
     store = CompanyStore()
     return store
 
 
 @pytest_asyncio.fixture
 async def company_manager(event_bus, agent_engine):
-    from nexusai.company.manager import CompanyManager
+    from clawclip.company.manager import CompanyManager
     manager = CompanyManager(
         event_bus=event_bus,
         agent_engine=agent_engine,

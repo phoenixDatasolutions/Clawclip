@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "nexusai"
+name = "clawclip"
 version = "0.1.0"
-description = "Modular multi-agent AI platform — connect any LLM, any messaging platform, with multi-agent orchestration"
+description = "ClawClip — Modular multi-agent AI platform — connect any LLM, any messaging platform, with multi-agent orchestration"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 authors = [
-    { name = "NexusAI Contributors" },
+    { name = "ClawClip Contributors" },
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -74,10 +74,10 @@ sandbox = ["docker>=7.0,<8"]
 
 # --- Bundles ---
 all = [
-    "nexusai[telegram,discord,slack,dashboard,cli-rich,claude-api,openai,gemini,ollama,knowledge,scheduler,mcp-support,sandbox]",
+    "clawclip[telegram,discord,slack,dashboard,cli-rich,claude-api,openai,gemini,ollama,knowledge,scheduler,mcp-support,sandbox]",
 ]
 minimal = [
-    "nexusai[telegram,claude-api,dashboard]",
+    "clawclip[telegram,claude-api,dashboard]",
 ]
 
 # --- Test ---
@@ -101,13 +101,13 @@ dev = [
 ]
 
 [project.scripts]
-nexusai = "nexusai.__main__:main"
+clawclip = "clawclip.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/user/nexusai"
-Documentation = "https://github.com/user/nexusai/docs"
-Repository = "https://github.com/user/nexusai"
-Issues = "https://github.com/user/nexusai/issues"
+Homepage = "https://github.com/user/clawclip"
+Documentation = "https://github.com/user/clawclip/docs"
+Repository = "https://github.com/user/clawclip"
+Issues = "https://github.com/user/clawclip/issues"
 
 [tool.ruff]
 target-version = "py312"

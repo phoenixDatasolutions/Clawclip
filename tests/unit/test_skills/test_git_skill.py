@@ -6,8 +6,8 @@ import subprocess
 
 import pytest
 
-from nexusai.skills.builtin.git import GitSkill
-from nexusai.core.types import SkillContext
+from clawclip.skills.builtin.git import GitSkill
+from clawclip.core.types import SkillContext
 
 pytestmark = pytest.mark.unit
 

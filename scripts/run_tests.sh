@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== NexusAI Test Runner ==="
+echo "=== ClawClip Test Runner ==="
 echo "Running all tests that work without external API keys..."
 echo ""
 

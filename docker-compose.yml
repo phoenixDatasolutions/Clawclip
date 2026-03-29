@@ -1,9 +1,9 @@
 version: "3.9"
 
 services:
-  nexusai:
+  clawclip:
     build: .
-    container_name: nexusai
+    container_name: clawclip
     restart: unless-stopped
     ports:
       - "8080:8080"   # Dashboard
@@ -11,18 +11,18 @@ services:
       - "8090:8090"   # MCP Server
     volumes:
       - ./config:/app/config
-      - nexusai-data:/app/data
+      - clawclip-data:/app/data
     env_file:
       - .env
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///data/nexusai.db
+      - DATABASE_URL=sqlite+aiosqlite:///data/clawclip.db
     depends_on:
       - chromadb
 
   # Vector store for RAG knowledge base (optional)
   chromadb:
     image: chromadb/chroma:latest
-    container_name: nexusai-chromadb
+    container_name: clawclip-chromadb
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -32,5 +32,5 @@ services:
       - ANONYMIZED_TELEMETRY=false
 
 volumes:
-  nexusai-data:
+  clawclip-data:
   chromadb-data:

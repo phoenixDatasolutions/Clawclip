@@ -5,10 +5,10 @@ in-memory SQLite database with no external platforms or providers configured.
 
 Implementation note
 -------------------
-``nexusai/app.py`` constructs ``SkillManager()`` and calls methods
+``clawclip/app.py`` constructs ``SkillManager()`` and calls methods
 (``register``, ``list_skills``) that do not match the current ``SkillManager``
 signature / API.  Each test that exercises ``initialize()`` patches the
-``SkillManager`` class used inside ``nexusai.app`` with a minimal mock so the
+``SkillManager`` class used inside ``clawclip.app`` with a minimal mock so the
 test can validate the surrounding bootstrap logic without tripping on the
 mismatch.
 """
@@ -58,24 +58,24 @@ def _make_mock_audit_logger():
 
 
 def _app_patches():
-    """Context manager that patches all unstable constructors in nexusai.app."""
+    """Context manager that patches all unstable constructors in clawclip.app."""
     from contextlib import ExitStack
 
     mock_audit = _make_mock_audit_logger()
 
     stack = ExitStack()
     stack.enter_context(
-        patch("nexusai.app.SkillManager", return_value=_make_mock_skill_manager())
+        patch("clawclip.app.SkillManager", return_value=_make_mock_skill_manager())
     )
     stack.enter_context(
-        patch("nexusai.app.SkillLoader", return_value=_make_mock_skill_loader())
+        patch("clawclip.app.SkillLoader", return_value=_make_mock_skill_loader())
     )
     stack.enter_context(
-        patch("nexusai.app.AgentEngine", return_value=_make_mock_agent_engine())
+        patch("clawclip.app.AgentEngine", return_value=_make_mock_agent_engine())
     )
     # Patch the AuditLogger class at its source so inline imports in app.py work
     audit_cls = MagicMock(return_value=mock_audit)
-    stack.enter_context(patch("nexusai.security.audit.AuditLogger", audit_cls))
+    stack.enter_context(patch("clawclip.security.audit.AuditLogger", audit_cls))
     return stack
 
 
@@ -87,7 +87,7 @@ def _app_patches():
 @pytest.fixture
 async def minimal_app(config_dir):
     """Fully-initialised NexusApp using mocked unstable constructors."""
-    from nexusai.app import NexusApp
+    from clawclip.app import NexusApp
 
     with _app_patches():
         app = NexusApp(config_path=str(config_dir))
@@ -105,7 +105,7 @@ async def minimal_app(config_dir):
 class TestNexusAppBootstrap:
     async def test_initialize_minimal(self, config_dir):
         """NexusApp.initialize() with SQLite and no platforms must complete."""
-        from nexusai.app import NexusApp
+        from clawclip.app import NexusApp
 
         with _app_patches():
             app = NexusApp(config_path=str(config_dir))
@@ -116,8 +116,8 @@ class TestNexusAppBootstrap:
 
     async def test_initialize_creates_db(self, config_dir):
         """After initialize(), app.db must be a non-None Database instance."""
-        from nexusai.app import NexusApp
-        from nexusai.storage.database import Database
+        from clawclip.app import NexusApp
+        from clawclip.storage.database import Database
 
         with _app_patches():
             app = NexusApp(config_path=str(config_dir))
@@ -130,7 +130,7 @@ class TestNexusAppBootstrap:
 
     async def test_initialize_registers_skills(self, config_dir):
         """After initialize(), skill_manager must be set and list_skills() works."""
-        from nexusai.app import NexusApp
+        from clawclip.app import NexusApp
 
         with _app_patches():
             app = NexusApp(config_path=str(config_dir))
@@ -144,7 +144,7 @@ class TestNexusAppBootstrap:
 
     async def test_stop_after_init(self, config_dir):
         """initialize() followed by stop() must not raise any exception."""
-        from nexusai.app import NexusApp
+        from clawclip.app import NexusApp
 
         with _app_patches():
             app = NexusApp(config_path=str(config_dir))
@@ -154,7 +154,7 @@ class TestNexusAppBootstrap:
 
     async def test_stop_without_init_is_safe(self):
         """stop() without a preceding initialize() must be a no-op."""
-        from nexusai.app import NexusApp
+        from clawclip.app import NexusApp
 
         app = NexusApp(config_path="nonexistent/config/path")
         # _running is False by default, so stop() should do nothing
@@ -163,14 +163,14 @@ class TestNexusAppBootstrap:
     async def test_config_no_providers(self, tmp_path, caplog):
         """When no providers are configured, a warning must be logged and
         agent_engine must still be initialised."""
-        from nexusai.app import NexusApp
+        from clawclip.app import NexusApp
 
         config_dir = tmp_path / "config_no_providers"
         config_dir.mkdir()
         (config_dir / "default.yaml").write_text(
             """
 app:
-  name: "NexusAI NoProviders"
+  name: "ClawClip NoProviders"
   debug: true
 
 storage:
@@ -221,7 +221,7 @@ providers:
         with _app_patches():
             app = NexusApp(config_path=str(config_dir))
             try:
-                with caplog.at_level(logging.WARNING, logger="nexusai.app"):
+                with caplog.at_level(logging.WARNING, logger="clawclip.app"):
                     await app.initialize()
                 # agent_engine should exist even without providers
                 assert app.agent_engine is not None
@@ -236,7 +236,7 @@ providers:
     async def test_missing_config_uses_defaults(self, tmp_path):
         """NexusApp with a non-existent config path must still initialize
         by falling back to built-in defaults (empty config = all defaults)."""
-        from nexusai.app import NexusApp
+        from clawclip.app import NexusApp
 
         empty_dir = tmp_path / "empty_config"
         empty_dir.mkdir()
@@ -253,7 +253,7 @@ providers:
         """Calling initialize() creates tables; they must exist and be queryable."""
         from sqlalchemy import text
 
-        from nexusai.app import NexusApp
+        from clawclip.app import NexusApp
 
         with _app_patches():
             app = NexusApp(config_path=str(config_dir))

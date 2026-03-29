@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# NexusAI One-Step Installer
-# Usage: git clone <repo> && cd nexusai && ./setup.sh
+# ClawClip One-Step Installer
+# Usage: git clone <repo> && cd clawclip && ./setup.sh
 
 set -e
 
 echo "╔══════════════════════════════════════════════╗"
-echo "║         NexusAI — One-Step Installer         ║"
+echo "║         ClawClip — One-Step Installer         ║"
 echo "╚══════════════════════════════════════════════╝"
 echo ""
 
@@ -52,10 +52,10 @@ fi
 echo "→ Installing dependencies..."
 if [ -f ".venv/bin/pip" ]; then
     .venv/bin/pip install -q -e ".[all]"
-    NEXUSAI_CMD=".venv/bin/python -m nexusai"
+    CLAWCLIP_CMD=".venv/bin/python -m clawclip"
 else
     .venv/Scripts/pip install -q -e ".[all]"
-    NEXUSAI_CMD=".venv/Scripts/python -m nexusai"
+    CLAWCLIP_CMD=".venv/Scripts/python -m clawclip"
 fi
 echo "✓ Dependencies installed"
 
@@ -64,14 +64,14 @@ echo "→ Launching setup wizard..."
 echo ""
 
 # Run the interactive setup wizard
-$NEXUSAI_CMD setup
+$CLAWCLIP_CMD setup
 
 echo ""
 echo "╔══════════════════════════════════════════════╗"
 echo "║           Setup Complete!                     ║"
 echo "║                                               ║"
-echo "║  Start NexusAI:                               ║"
+echo "║  Start ClawClip:                               ║"
 echo "║    make run                                   ║"
 echo "║    — or —                                     ║"
-echo "║    $NEXUSAI_CMD run                           ║"
+echo "║    $CLAWCLIP_CMD run                           ║"
 echo "╚══════════════════════════════════════════════╝"

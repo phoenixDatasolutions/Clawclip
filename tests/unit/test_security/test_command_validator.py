@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.security.command_validator — validate() and sanitize_path()."""
+"""Unit tests for clawclip.security.command_validator — validate() and sanitize_path()."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from nexusai.security.command_validator import CommandValidator, sanitize_path, validate
+from clawclip.security.command_validator import CommandValidator, sanitize_path, validate
 
 
 # ── Module-level validate() tests ─────────────────────────────────────────────

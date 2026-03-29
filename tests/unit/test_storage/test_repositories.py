@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.storage.repositories.base.BaseRepository.
+"""Unit tests for clawclip.storage.repositories.base.BaseRepository.
 
 All tests use an in-memory SQLite database and the User / UserPlatformLink
 models as concrete examples of the generic repository.
@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import pytest
 
-from nexusai.storage.database import Database
-from nexusai.storage.models.user import User, UserPlatformLink
-from nexusai.storage.repositories.base import BaseRepository
+from clawclip.storage.database import Database
+from clawclip.storage.models.user import User, UserPlatformLink
+from clawclip.storage.repositories.base import BaseRepository
 
 
 # ---------------------------------------------------------------------------

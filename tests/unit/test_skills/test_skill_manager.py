@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from nexusai.skills.manager import SkillManager
-from nexusai.skills.builtin.shell import ShellSkill
-from nexusai.skills.builtin.files import FileSkill
-from nexusai.skills.builtin.git import GitSkill
-from nexusai.core.registry import Registry
-from nexusai.core.types import SkillContext
+from clawclip.skills.manager import SkillManager
+from clawclip.skills.builtin.shell import ShellSkill
+from clawclip.skills.builtin.files import FileSkill
+from clawclip.skills.builtin.git import GitSkill
+from clawclip.core.registry import Registry
+from clawclip.core.types import SkillContext
 
 pytestmark = pytest.mark.unit
 

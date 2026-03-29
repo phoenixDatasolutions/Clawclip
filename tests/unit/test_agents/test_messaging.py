@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.agents.messaging — AgentMessageBus."""
+"""Unit tests for clawclip.agents.messaging — AgentMessageBus."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from nexusai.agents.messaging import AgentMessageBus
+from clawclip.agents.messaging import AgentMessageBus
 
 
 @pytest.fixture(autouse=True)

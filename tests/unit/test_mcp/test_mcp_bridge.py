@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.mcp.bridge — MCPSkillAdapter."""
+"""Unit tests for clawclip.mcp.bridge — MCPSkillAdapter."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from nexusai.core.types import SkillContext
-from nexusai.mcp.bridge import MCPSkillAdapter, _mcp_tool_to_definition
-from nexusai.mcp.registry import MCPServerInfo
+from clawclip.core.types import SkillContext
+from clawclip.mcp.bridge import MCPSkillAdapter, _mcp_tool_to_definition
+from clawclip.mcp.registry import MCPServerInfo
 
 
 def _server_info(name: str = "testserver", tools: list | None = None) -> MCPServerInfo:

@@ -1,4 +1,4 @@
-"""Unit tests for NexusAI ORM models.
+"""Unit tests for ClawClip ORM models.
 
 Tests cover:
 - Unique constraints
@@ -15,10 +15,10 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from nexusai.storage.database import Database
-from nexusai.storage.models.cost import CostEntry
-from nexusai.storage.models.conversation import Conversation, ConversationMessage
-from nexusai.storage.models.user import User, UserPlatformLink
+from clawclip.storage.database import Database
+from clawclip.storage.models.cost import CostEntry
+from clawclip.storage.models.conversation import Conversation, ConversationMessage
+from clawclip.storage.models.user import User, UserPlatformLink
 
 
 # ---------------------------------------------------------------------------

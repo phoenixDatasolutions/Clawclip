@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.security.rate_limiter — RateLimiter and TokenBucket."""
+"""Unit tests for clawclip.security.rate_limiter — RateLimiter and TokenBucket."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from nexusai.security.rate_limiter import RateLimiter, TokenBucket
+from clawclip.security.rate_limiter import RateLimiter, TokenBucket
 
 
 # ── test_allows_within_limit ──────────────────────────────────────────────────
@@ -69,7 +69,7 @@ async def test_refill_over_time() -> None:
 
     # Simulate 1 second of elapsed time by patching time.monotonic
     original_last = bucket._last_refill
-    with patch("nexusai.security.rate_limiter.time.monotonic", return_value=original_last + 1.0):
+    with patch("clawclip.security.rate_limiter.time.monotonic", return_value=original_last + 1.0):
         third = await bucket.consume()
 
     assert third is True  # refilled

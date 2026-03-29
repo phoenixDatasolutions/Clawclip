@@ -1,10 +1,10 @@
-"""Unit tests for nexusai.mcp.registry — MCPRegistry."""
+"""Unit tests for clawclip.mcp.registry — MCPRegistry."""
 
 from __future__ import annotations
 
 import pytest
 
-from nexusai.mcp.registry import MCPRegistry, MCPServerInfo
+from clawclip.mcp.registry import MCPRegistry, MCPServerInfo
 
 
 def _server(url: str, name: str, healthy: bool = True, tools: list | None = None) -> MCPServerInfo:

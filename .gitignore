@@ -44,7 +44,7 @@ htmlcov/
 
 # Build
 node_modules/
-nexusai/dashboard/frontend/dist/
+clawclip/dashboard/frontend/dist/
 
 # Docker
 docker-compose.override.yml

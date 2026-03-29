@@ -1,11 +1,11 @@
-"""Unit tests for nexusai.workflows.parser — YAML workflow parsing and validation."""
+"""Unit tests for clawclip.workflows.parser — YAML workflow parsing and validation."""
 
 from __future__ import annotations
 
 import pytest
 
-from nexusai.workflows.parser import parse_workflow, parse_workflow_file, validate_workflow
-from nexusai.core.types import WorkflowDefinition
+from clawclip.workflows.parser import parse_workflow, parse_workflow_file, validate_workflow
+from clawclip.core.types import WorkflowDefinition
 
 
 VALID_WORKFLOW_YAML = """

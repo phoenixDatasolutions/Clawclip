@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.company.org_chart — OrgChart."""
+"""Unit tests for clawclip.company.org_chart — OrgChart."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from nexusai.company.models import OrgNode
-from nexusai.company.org_chart import OrgChart, create_default_chart
+from clawclip.company.models import OrgNode
+from clawclip.company.org_chart import OrgChart, create_default_chart
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

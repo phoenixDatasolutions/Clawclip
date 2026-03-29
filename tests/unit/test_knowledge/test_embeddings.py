@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from nexusai.knowledge.vectorstore import InMemoryStore, _cosine_similarity
+from clawclip.knowledge.vectorstore import InMemoryStore, _cosine_similarity
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +166,7 @@ class TestCosineSimilarity:
 
 class TestDocumentIndexerChunking:
     def _make_indexer(self, chunk_size: int = 100, chunk_overlap: int = 20):
-        from nexusai.knowledge.indexer import DocumentIndexer
+        from clawclip.knowledge.indexer import DocumentIndexer
 
         # Dummy store and provider — we only test _chunk_text()
         store = MagicMock()
@@ -238,9 +238,9 @@ class TestDocumentIndexerChunking:
 
 class TestKnowledgeManager:
     def _make_manager(self):
-        from nexusai.knowledge.indexer import DocumentIndexer
-        from nexusai.knowledge.manager import KnowledgeManager
-        from nexusai.knowledge.retriever import Retriever
+        from clawclip.knowledge.indexer import DocumentIndexer
+        from clawclip.knowledge.manager import KnowledgeManager
+        from clawclip.knowledge.retriever import Retriever
 
         store = InMemoryStore()
         provider = FakeEmbeddingProvider()

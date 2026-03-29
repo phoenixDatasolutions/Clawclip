@@ -20,11 +20,11 @@ dev:
 
 # Interactive setup wizard
 setup:
-	.venv/Scripts/python -m nexusai setup
+	.venv/Scripts/python -m clawclip setup
 
 # Run the application
 run:
-	.venv/Scripts/python -m nexusai run
+	.venv/Scripts/python -m clawclip run
 
 # Run tests
 test:
@@ -37,19 +37,19 @@ test-all:
 	pytest tests/ -v --tb=short --ignore=tests/e2e
 
 test-cov:
-	pytest tests/unit/ --cov=nexusai --cov-report=term-missing --cov-report=html:htmlcov -v
+	pytest tests/unit/ --cov=clawclip --cov-report=term-missing --cov-report=html:htmlcov -v
 
 test-fast:
 	pytest tests/unit/ -x -q --tb=line
 
 # Lint
 lint:
-	ruff check nexusai/ tests/
-	ruff format --check nexusai/ tests/
+	ruff check clawclip/ tests/
+	ruff format --check clawclip/ tests/
 
 # Format
 format:
-	.venv/Scripts/ruff format nexusai/ tests/
+	.venv/Scripts/ruff format clawclip/ tests/
 
 # Database migrations
 db-migrate:

@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.agents.engine — AgentEngine lifecycle and parallel execution."""
+"""Unit tests for clawclip.agents.engine — AgentEngine lifecycle and parallel execution."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from tests.conftest import FakeLLMProvider
-from nexusai.agents.engine import AgentEngine
-from nexusai.core.events import AgentTaskCompleted, AgentTaskStarted, EventBus
-from nexusai.core.registry import Registry
-from nexusai.core.types import AgentConfig, TaskRequest
+from clawclip.agents.engine import AgentEngine
+from clawclip.core.events import AgentTaskCompleted, AgentTaskStarted, EventBus
+from clawclip.core.registry import Registry
+from clawclip.core.types import AgentConfig, TaskRequest
 
 
 def _make_engine(
@@ -81,7 +81,7 @@ class TestAgentEngine:
         engine, _ = _make_engine(["done"], agent_type="coordinator")
 
         # Spawn an agent directly and verify tracking
-        from nexusai.core.types import AgentContext
+        from clawclip.core.types import AgentContext
 
         ctx = AgentContext(event_bus=engine._event_bus, user_id="u1")
         from tests.conftest import FakeLLMProvider as FLP
@@ -96,7 +96,7 @@ class TestAgentEngine:
     async def test_cancel_agent(self) -> None:
         """cancel_agent(id) marks the agent as cancelled and returns True."""
         engine, _ = _make_engine(["done"], agent_type="coordinator")
-        from nexusai.core.types import AgentContext
+        from clawclip.core.types import AgentContext
 
         ctx = AgentContext(event_bus=engine._event_bus, user_id="u1")
         from tests.conftest import FakeLLMProvider as FLP

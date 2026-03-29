@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy project files
 COPY pyproject.toml ./
-COPY nexusai/ nexusai/
+COPY clawclip/ clawclip/
 COPY config/ config/
 COPY alembic.ini ./
 COPY alembic/ alembic/
@@ -25,8 +25,8 @@ EXPOSE 8080
 
 # Environment
 ENV PYTHONUNBUFFERED=1
-ENV NEXUSAI_DATA_DIR=/app/data
-ENV NEXUSAI_CONFIG_DIR=/app/config
+ENV CLAWCLIP_DATA_DIR=/app/data
+ENV CLAWCLIP_CONFIG_DIR=/app/config
 
 # Entrypoint
-CMD ["python", "-m", "nexusai", "run"]
+CMD ["python", "-m", "clawclip", "run"]

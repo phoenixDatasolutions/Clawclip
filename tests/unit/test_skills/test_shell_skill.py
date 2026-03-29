@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from nexusai.skills.builtin.shell import ShellSkill
-from nexusai.core.types import SkillContext
+from clawclip.skills.builtin.shell import ShellSkill
+from clawclip.core.types import SkillContext
 
 pytestmark = pytest.mark.unit
 

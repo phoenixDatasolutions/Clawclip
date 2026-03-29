@@ -1,12 +1,12 @@
-"""Unit tests for nexusai.replay.player.ReplayPlayer."""
+"""Unit tests for clawclip.replay.player.ReplayPlayer."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
 import pytest
 
-from nexusai.core.types import ExecutionTrace, TraceStep
-from nexusai.replay.player import ReplayPlayer
+from clawclip.core.types import ExecutionTrace, TraceStep
+from clawclip.replay.player import ReplayPlayer
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.agents.base_agent — BaseAgent LLM loop."""
+"""Unit tests for clawclip.agents.base_agent — BaseAgent LLM loop."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from tests.conftest import FakeLLMProvider, FakeLLMProviderWithToolCalls
-from nexusai.agents.base_agent import BaseAgent
-from nexusai.core.enums import AgentStatus
-from nexusai.core.events import EventBus
-from nexusai.core.types import (
+from clawclip.agents.base_agent import BaseAgent
+from clawclip.core.enums import AgentStatus
+from clawclip.core.events import EventBus
+from clawclip.core.types import (
     AgentConfig,
     AgentContext,
     SkillResult,
@@ -64,7 +64,7 @@ class TestBaseAgent:
 
     async def test_execute_respects_max_turns(self) -> None:
         """Provider that always returns tool calls stops at max_turns."""
-        from nexusai.core.types import LLMResponse, ToolCall
+        from clawclip.core.types import LLMResponse, ToolCall
 
         class InfiniteToolProvider:
             name = "infinite"

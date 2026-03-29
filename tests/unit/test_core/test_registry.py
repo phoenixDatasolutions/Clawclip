@@ -1,10 +1,10 @@
-"""Unit tests for nexusai.core.registry — typed Registry."""
+"""Unit tests for clawclip.core.registry — typed Registry."""
 
 from __future__ import annotations
 
 import pytest
 
-from nexusai.core.registry import Registry
+from clawclip.core.registry import Registry
 
 
 # ── test_register_and_get ─────────────────────────────────────────────────────

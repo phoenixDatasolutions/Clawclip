@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.security.rbac — RBACManager."""
+"""Unit tests for clawclip.security.rbac — RBACManager."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from nexusai.core.enums import Role
-from nexusai.security.rbac import Permission, RBACManager
+from clawclip.core.enums import Role
+from clawclip.security.rbac import Permission, RBACManager
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

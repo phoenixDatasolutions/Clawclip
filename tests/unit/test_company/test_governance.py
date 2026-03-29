@@ -1,4 +1,4 @@
-"""Unit tests for nexusai.company.governance — GovernanceManager."""
+"""Unit tests for clawclip.company.governance — GovernanceManager."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from nexusai.company.governance import (
+from clawclip.company.governance import (
     MAX_DELEGATION_DEPTH,
     GovernanceManager,
     GovernanceRule,
