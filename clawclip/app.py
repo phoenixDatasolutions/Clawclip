@@ -15,6 +15,7 @@ from clawclip.storage.database import Database
 from clawclip.skills.manager import SkillManager
 from clawclip.skills.loader import SkillLoader
 from clawclip.agents.engine import AgentEngine
+from clawclip.agents.loader import AgentLoader
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,6 @@ class NexusApp:
             provider_registry.register(name, p)
 
         # Load agent configs from YAML
-        from clawclip.agents.loader import AgentLoader
         agent_loader = AgentLoader()
         agent_configs_list = agent_loader.load_all_agents("config/agents")
         agent_configs = {ac.agent_type: ac for ac in agent_configs_list}

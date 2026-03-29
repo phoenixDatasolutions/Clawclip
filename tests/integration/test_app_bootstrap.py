@@ -35,10 +35,22 @@ def _make_mock_skill_manager():
     return sm
 
 
+def _make_mock_skill(name: str) -> MagicMock:
+    """Return a minimal mock skill object with a .name attribute."""
+    skill = MagicMock()
+    skill.name = name
+    skill.tools = []
+    skill.triggers = []
+    return skill
+
+
 def _make_mock_skill_loader():
     """Return a MagicMock that satisfies SkillLoader calls in app.py."""
     loader = MagicMock()
-    loader.discover_builtin_skills.return_value = ["shell_skill", "file_skill"]
+    loader.discover_builtin_skills.return_value = [
+        _make_mock_skill("shell"),
+        _make_mock_skill("files"),
+    ]
     loader.discover_developer_skills.return_value = []
     return loader
 
@@ -46,7 +58,17 @@ def _make_mock_skill_loader():
 def _make_mock_agent_engine():
     """Return a MagicMock for AgentEngine."""
     engine = MagicMock()
+    engine._agent_configs = {}
+    engine._provider_registry = MagicMock()
+    engine._provider_registry._items = {}
     return engine
+
+
+def _make_mock_agent_loader():
+    """Return a MagicMock for AgentLoader."""
+    loader = MagicMock()
+    loader.load_all_agents.return_value = []
+    return loader
 
 
 def _make_mock_audit_logger():
@@ -72,6 +94,10 @@ def _app_patches():
     )
     stack.enter_context(
         patch("clawclip.app.AgentEngine", return_value=_make_mock_agent_engine())
+    )
+    # Patch AgentLoader (imported at module level in app.py)
+    stack.enter_context(
+        patch("clawclip.app.AgentLoader", return_value=_make_mock_agent_loader())
     )
     # Patch the AuditLogger class at its source so inline imports in app.py work
     audit_cls = MagicMock(return_value=mock_audit)
