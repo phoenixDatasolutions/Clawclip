@@ -1,6 +1,6 @@
 name: system_agent
 description: "Shell commands, system monitoring, screenshots, and OS-level tasks"
-provider: claude-api
+provider: "${CLAWCLIP_DEFAULT_PROVIDER:claude-api}"
 model: claude-opus-4-6
 allowed_skills:
   - shell
