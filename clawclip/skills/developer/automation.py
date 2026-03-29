@@ -172,7 +172,7 @@ class AutomationSkill:
 
     @property
     def triggers(self) -> list[str]:
-        return ["/ci", "/pipeline", "/report", "/watch"]
+        return ["/pipeline", "/report", "/watch"]
 
     @property
     def required_permissions(self) -> list[str]:

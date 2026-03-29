@@ -41,7 +41,7 @@ class BrowserSkill:
 
     @property
     def triggers(self) -> list[str]:
-        return ["/browse", "/web", "/click", "/scrape"]
+        return ["/browse", "/click", "/scrape"]
 
     @property
     def required_permissions(self) -> list[str]:

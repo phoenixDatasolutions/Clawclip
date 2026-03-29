@@ -82,7 +82,7 @@ class ShellSkill:
 
     @property
     def triggers(self) -> list[str]:
-        return ["/sh", "/ps", "/bash"]
+        return ["/sh", "/pwsh", "/bash"]
 
     @property
     def required_permissions(self) -> list[str]:
