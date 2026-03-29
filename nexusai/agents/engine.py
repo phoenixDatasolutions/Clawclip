@@ -173,14 +173,18 @@ class AgentEngine:
     def _create_agent(self, agent_type: str) -> Any:
         """Create an agent instance by type."""
         from nexusai.agents.base_agent import BaseAgent
+        from nexusai.agents.builtin.code_agent import CodeAgent
+        from nexusai.agents.builtin.devops_agent import DevOpsAgent
+        from nexusai.agents.builtin.research_agent import ResearchAgent
+        from nexusai.agents.builtin.system_agent import SystemAgent
         from nexusai.agents.coordinator import CoordinatorAgent
 
         agent_classes: dict[str, type] = {
             "coordinator": CoordinatorAgent,
-            "code": BaseAgent,
-            "research": BaseAgent,
-            "system": BaseAgent,
-            "devops": BaseAgent,
+            "code": CodeAgent,
+            "research": ResearchAgent,
+            "system": SystemAgent,
+            "devops": DevOpsAgent,
         }
 
         agent_class = agent_classes.get(agent_type, BaseAgent)

@@ -1,0 +1,28 @@
+id: pr_review
+name: Auto PR Review
+description: Automatically review pull requests
+
+trigger:
+  type: webhook
+  config:
+    path: /webhooks/github
+    event: pull_request.opened
+
+steps:
+  - id: get_diff
+    type: skill
+    name: Get PR diff
+    config:
+      skill: git
+      tool: git_diff
+      arguments:
+        args: "HEAD~1"
+
+  - id: review
+    type: llm_call
+    name: Review code
+    depends_on: [get_diff]
+    config:
+      model: claude-opus-4-6
+      prompt: "Review this PR diff and provide feedback:\n${{ steps.get_diff.output }}"
+      system_prompt: "You are a senior code reviewer."

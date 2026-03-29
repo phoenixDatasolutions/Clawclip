@@ -1,0 +1,25 @@
+id: daily_summary
+name: Daily Summary
+description: Send a morning summary
+
+trigger:
+  type: cron
+  config:
+    cron: "0 9 * * *"
+
+steps:
+  - id: get_status
+    type: skill
+    name: Get system status
+    config:
+      skill: monitor
+      tool: get_system_info
+      arguments: {}
+
+  - id: summarize
+    type: llm_call
+    name: Generate summary
+    depends_on: [get_status]
+    config:
+      model: claude-opus-4-6
+      prompt: "Generate a brief morning status summary:\n${{ steps.get_status.output }}"

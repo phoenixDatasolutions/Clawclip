@@ -38,22 +38,16 @@ def cli() -> None:
 
 
 @cli.command()
-@click.option("--config-dir", default="config", help="Configuration directory")
+@click.option("--config", default="config/local.yaml", help="Path to local config YAML")
 @click.option("--log-level", default="INFO", help="Log level (DEBUG, INFO, WARNING, ERROR)")
-def run(config_dir: str, log_level: str) -> None:
+def run(config: str, log_level: str) -> None:
     """Start NexusAI with all enabled platforms and services."""
     _setup_logging(log_level)
 
     from nexusai.app import NexusApp
 
-    app = NexusApp(config_dir=config_dir)
-
-    async def _run() -> None:
-        await app.initialize()
-        await app.start()
-
     try:
-        asyncio.run(_run())
+        asyncio.run(NexusApp(config).run())
     except KeyboardInterrupt:
         click.echo("\nNexusAI stopped.")
 
@@ -64,7 +58,7 @@ def setup(config_dir: str) -> None:
     """Run the interactive setup wizard."""
     from nexusai.setup_wizard.wizard import run_wizard
 
-    run_wizard(config_dir)
+    asyncio.run(run_wizard())
 
 
 @cli.command("config")

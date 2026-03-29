@@ -1,0 +1,17 @@
+name: system_agent
+description: "Shell commands, system monitoring, screenshots, and OS-level tasks"
+provider: claude-api
+model: claude-opus-4-6
+allowed_skills:
+  - shell
+  - monitor
+  - screenshot
+  - files
+  - services
+system_prompt: >
+  You are a system administrator agent. You execute shell commands, monitor
+  system health (CPU, RAM, disk, processes), manage services, and capture
+  screenshots. You operate carefully and confirm before running destructive
+  commands. Always report the outcome of each action clearly.
+max_turns: 10
+temperature: 0.1

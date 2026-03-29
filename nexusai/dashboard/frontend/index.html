@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexusAI Dashboard</title>
+  <style>
+    /* Minimal dark theme */
+    body { background: #0f172a; color: #e2e8f0; font-family: system-ui; margin: 0; }
+    #app { display: flex; flex-direction: column; min-height: 100vh; }
+    .nav { background: #1e293b; padding: 1rem 2rem; border-bottom: 1px solid #334155; }
+    .nav h1 { margin: 0; font-size: 1.25rem; color: #818cf8; }
+    .content { padding: 2rem; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem; }
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+    .toggle { display: flex; align-items: center; gap: 0.5rem; }
+    .badge { padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; }
+    .badge-green { background: #166534; color: #bbf7d0; }
+    .badge-gray { background: #374151; color: #9ca3af; }
+    .btn { padding: 0.5rem 1rem; border-radius: 0.375rem; border: none; cursor: pointer; font-size: 0.875rem; }
+    .btn-primary { background: #4f46e5; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    pre { background: #0f172a; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; font-size: 0.8rem; }
+    code { background: #1e293b; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <nav class="nav"><h1>&#9889; NexusAI Dashboard</h1></nav>
+    <div class="content">
+      <p style="color: #94a3b8;">Loading dashboard&#8230; If this persists, ensure the dashboard is running at this address.</p>
+      <p style="color: #64748b; font-size: 0.875rem;">REST API available at <code>/api/</code> | WebSocket at <code>/ws/</code></p>
+    </div>
+  </div>
+  <script>
+    // Simple fetch to check API
+    fetch('/api/system/health').then(r => r.json()).then(d => {
+      document.querySelector('.content').innerHTML = `
+        <div class="card">
+          <h2 style="margin-top:0;">System Status <span class="badge badge-green">online</span></h2>
+          <pre>${JSON.stringify(d, null, 2)}</pre>
+        </div>
+        <div class="card">
+          <h2 style="margin-top:0;">API Endpoints</h2>
+          <p style="color:#94a3b8;">Interactive docs: <a href="/api/docs" style="color:#818cf8;">/api/docs</a></p>
+          <ul style="color:#94a3b8; line-height:1.8;">
+            <li><code>POST /api/auth/login</code> &mdash; obtain JWT token</li>
+            <li><code>GET  /api/agents</code> &mdash; list agents</li>
+            <li><code>GET  /api/analytics/costs</code> &mdash; cost summary</li>
+            <li><code>GET  /api/conversations</code> &mdash; conversation history</li>
+            <li><code>GET  /api/skills</code> &mdash; registered skills</li>
+            <li><code>GET  /api/system/health</code> &mdash; this endpoint</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2 style="margin-top:0;">Build Full Dashboard</h2>
+          <pre>cd nexusai/dashboard/frontend\nnpm install\nnpm run build</pre>
+        </div>
+      `;
+    }).catch(err => {
+      document.querySelector('.content').innerHTML = `
+        <div class="card">
+          <h2 style="margin-top:0; color:#f87171;">Could not reach API</h2>
+          <p style="color:#94a3b8;">${err}</p>
+          <p style="color:#64748b; font-size:0.875rem;">Make sure the NexusAI dashboard server is running.</p>
+        </div>
+      `;
+    });
+  </script>
+</body>
+</html>

@@ -1,5 +1,4 @@
-"""NexusAI Application — main bootstrap orchestrator."""
-
+"""NexusApp — application bootstrap that initializes and wires all modules."""
 from __future__ import annotations
 
 import asyncio
@@ -10,245 +9,444 @@ from typing import Any
 
 from nexusai.core.config import NexusConfig
 from nexusai.core.di import Container
-from nexusai.core.events import ConfigChanged, EventBus
+from nexusai.core.events import EventBus
 from nexusai.core.registry import Registry
+from nexusai.storage.database import Database
+from nexusai.skills.manager import SkillManager
+from nexusai.skills.loader import SkillLoader
+from nexusai.agents.engine import AgentEngine
 
 logger = logging.getLogger(__name__)
 
 
 class NexusApp:
-    """Main application class that wires together all NexusAI components.
-
-    Lifecycle:
-        1. __init__: Create config, event bus, DI container
-        2. initialize(): Load config, init database, register components
-        3. start(): Start all enabled platform adapters concurrently
-        4. stop(): Graceful shutdown of all components
-    """
-
-    def __init__(self, config_dir: str | Path = "config") -> None:
-        self.config = NexusConfig(config_dir)
-        self.event_bus = EventBus()
+    def __init__(self, config_path: str = "config/local.yaml") -> None:
+        # Support both config_path and legacy config_dir kwarg
+        self.config = NexusConfig(config_path)
         self.container = Container()
+        self.event_bus = EventBus()
+        self.db: Database | None = None
+        self.skill_manager: SkillManager | None = None
+        self.agent_engine: AgentEngine | None = None
+        self.platforms: dict[str, Any] = {}
+        self.providers: dict[str, Any] = {}
+        # Optional modules
+        self.dashboard_app = None
+        self.scheduler_engine = None
+        self.workflow_engine = None
+        self.knowledge_manager = None
+        self.mcp_server = None
+        self.notification_engine = None
+        self.audit_logger = None
+        self.replay_recorder = None
+        self.company_manager = None
+        self._tasks: list[asyncio.Task] = []
         self._running = False
-        self._shutdown_event = asyncio.Event()
 
     async def initialize(self) -> None:
-        """Load configuration and register all enabled components."""
-        logger.info("Initializing NexusAI v%s", self._get_version())
+        cfg = self.config
+        logger.info("Initializing NexusAI...")
 
-        # Load configuration
-        self.config.load()
+        # ── 1. Database ────────────────────────────────────────────
+        db_url = cfg.get("storage.database_url", "sqlite+aiosqlite:///data/nexusai.db")
+        Path("data").mkdir(exist_ok=True)
+        self.db = Database(db_url)
+        await self.db.initialize()
+        self.container.register("db", self.db)
+        logger.info("Database initialized: %s", db_url)
 
-        # Register core services in DI container
-        self.container.register("config", self.config)
-        self.container.register("event_bus", self.event_bus)
+        # ── 2. Skills ──────────────────────────────────────────────
+        self.skill_manager = SkillManager()
+        loader = SkillLoader()
+        for skill in loader.discover_builtin_skills():
+            self.skill_manager.register(skill)
+        if cfg.get("features.developer_skills.enabled", True):
+            for skill in loader.discover_developer_skills():
+                self.skill_manager.register(skill)
+        self.container.register("skill_manager", self.skill_manager)
+        logger.info("Skills loaded: %d registered", len(self.skill_manager.list_skills()))
 
-        # Create registries
-        self.container.register("platform_registry", Registry("platforms"))
-        self.container.register("provider_registry", Registry("providers"))
-        self.container.register("skill_registry", Registry("skills"))
-        self.container.register("agent_registry", Registry("agents"))
+        # ── 3. LLM Providers ───────────────────────────────────────
+        await self._init_providers()
 
-        # Initialize database
-        await self._init_database()
+        # ── 4. Agent Engine ────────────────────────────────────────
+        default_provider = next(iter(self.providers.values()), None)
+        self.agent_engine = AgentEngine(
+            skill_manager=self.skill_manager,
+            provider=default_provider,
+            event_bus=self.event_bus,
+        )
+        self.container.register("agent_engine", self.agent_engine)
+        logger.info("Agent engine initialized")
 
-        # Register enabled providers
-        await self._register_providers()
+        # ── 5. Security ────────────────────────────────────────────
+        from nexusai.security.audit import AuditLogger
+        self.audit_logger = AuditLogger(
+            self.event_bus,
+            self.db.session_factory if hasattr(self.db, "session_factory") else None,
+        )
+        await self.audit_logger.start()
 
-        # Register enabled platforms
-        await self._register_platforms()
+        # ── 6. Optional modules ────────────────────────────────────
+        await self._init_optional_modules()
 
-        # Load skills
-        await self._load_skills()
+        # ── 7. Platforms ───────────────────────────────────────────
+        await self._init_platforms()
 
-        # Load agent definitions
-        await self._load_agents()
-
-        # Wire message router
-        self._wire_message_router()
+        # ── 8. Dashboard ───────────────────────────────────────────
+        if cfg.get("features.dashboard.enabled", True):
+            await self._init_dashboard()
 
         logger.info("NexusAI initialized successfully")
 
+    async def _init_providers(self) -> None:
+        cfg = self.config
+        if cfg.get("providers.claude_api.enabled", False):
+            try:
+                from nexusai.providers.claude_api import ClaudeAPIProvider
+                p = ClaudeAPIProvider(
+                    api_key=cfg.get("providers.claude_api.api_key", ""),
+                    default_model=cfg.get("providers.claude_api.default_model", "claude-opus-4-6"),
+                )
+                self.providers["claude-api"] = p
+                logger.info("Provider registered: claude-api")
+            except Exception as e:
+                logger.warning("claude-api provider failed: %s", e)
+
+        if cfg.get("providers.openai.enabled", False):
+            try:
+                from nexusai.providers.openai_ import OpenAIProvider
+                p = OpenAIProvider(api_key=cfg.get("providers.openai.api_key", ""))
+                self.providers["openai"] = p
+                logger.info("Provider registered: openai")
+            except Exception as e:
+                logger.warning("openai provider failed: %s", e)
+
+        if cfg.get("providers.ollama.enabled", False):
+            try:
+                from nexusai.providers.ollama import OllamaProvider
+                p = OllamaProvider(
+                    base_url=cfg.get("providers.ollama.base_url", "http://localhost:11434")
+                )
+                self.providers["ollama"] = p
+                logger.info("Provider registered: ollama")
+            except Exception as e:
+                logger.warning("ollama provider failed: %s", e)
+
+        if cfg.get("providers.gemini.enabled", False):
+            try:
+                from nexusai.providers.gemini import GeminiProvider
+                p = GeminiProvider(api_key=cfg.get("providers.gemini.api_key", ""))
+                self.providers["gemini"] = p
+                logger.info("Provider registered: gemini")
+            except Exception as e:
+                logger.warning("gemini provider failed: %s", e)
+
+        if cfg.get("providers.claude_cli.enabled", False):
+            try:
+                from nexusai.providers.claude_cli import ClaudeCLIProvider
+                p = ClaudeCLIProvider()
+                self.providers["claude-cli"] = p
+                logger.info("Provider registered: claude-cli")
+            except Exception as e:
+                logger.warning("claude-cli provider failed: %s", e)
+
+        if cfg.get("providers.litellm.enabled", False):
+            try:
+                from nexusai.providers.litellm_ import LiteLLMProvider
+                p = LiteLLMProvider()
+                self.providers["litellm"] = p
+                logger.info("Provider registered: litellm")
+            except Exception as e:
+                logger.warning("litellm provider failed: %s", e)
+
+        if not self.providers:
+            logger.warning("No LLM providers configured — agents will not function")
+
+    async def _init_optional_modules(self) -> None:
+        cfg = self.config
+
+        # Replay / Debug
+        if cfg.get("features.replay_debug.enabled", True):
+            try:
+                from nexusai.replay.recorder import ExecutionRecorder
+                self.replay_recorder = ExecutionRecorder(self.event_bus)
+                await self.replay_recorder.start()
+                logger.info("Replay recorder started")
+            except Exception as e:
+                logger.warning("Replay recorder failed: %s", e)
+
+        # Knowledge Base (RAG)
+        if cfg.get("features.knowledge_base.enabled", False):
+            try:
+                from nexusai.knowledge.manager import KnowledgeManager
+                from nexusai.knowledge.embeddings import create_embedding_provider
+                from nexusai.knowledge.vectorstore import create_vector_store
+                from nexusai.knowledge.indexer import DocumentIndexer
+                from nexusai.knowledge.retriever import Retriever
+                emb = create_embedding_provider(cfg.get("features.knowledge_base", {}))
+                vs = create_vector_store(cfg.get("features.knowledge_base", {}))
+                indexer = DocumentIndexer(vs, emb)
+                retriever = Retriever(vs, emb)
+                self.knowledge_manager = KnowledgeManager(indexer, retriever)
+                logger.info("Knowledge base initialized")
+            except Exception as e:
+                logger.warning("Knowledge base failed: %s", e)
+
+        # Workflow Engine
+        if cfg.get("features.workflows.enabled", False):
+            try:
+                from nexusai.workflows.engine import WorkflowEngine
+                from nexusai.workflows.triggers import TriggerManager
+                trigger_mgr = TriggerManager()
+                default_provider = next(iter(self.providers.values()), None)
+                self.workflow_engine = WorkflowEngine(
+                    skill_manager=self.skill_manager,
+                    llm_provider=default_provider,
+                    trigger_manager=trigger_mgr,
+                )
+                workflow_dir = cfg.get("features.workflows.workflow_dir", "config/workflows")
+                if Path(workflow_dir).exists():
+                    await self.workflow_engine.load_workflows(workflow_dir)
+                logger.info("Workflow engine initialized")
+            except Exception as e:
+                logger.warning("Workflow engine failed: %s", e)
+
+        # Scheduler
+        if cfg.get("features.scheduler.enabled", False):
+            try:
+                from nexusai.scheduler.engine import SchedulerEngine
+                from nexusai.scheduler.store import JobStore
+                store = JobStore()
+                self.scheduler_engine = SchedulerEngine(
+                    job_store=store,
+                    agent_engine=self.agent_engine,
+                    workflow_engine=self.workflow_engine,
+                    skill_manager=self.skill_manager,
+                )
+                await self.scheduler_engine.start()
+                logger.info("Scheduler started")
+            except Exception as e:
+                logger.warning("Scheduler failed: %s", e)
+
+        # Notifications
+        if cfg.get("features.notifications.enabled", False):
+            try:
+                from nexusai.notifications.engine import NotificationEngine
+                from nexusai.notifications.rules import RulesEngine
+                from nexusai.notifications.channels import LogNotificationChannel
+                rules = RulesEngine([])
+                channels = {"log": LogNotificationChannel()}
+                self.notification_engine = NotificationEngine(channels, rules, self.event_bus)
+                await self.notification_engine.start()
+                logger.info("Notification engine started")
+            except Exception as e:
+                logger.warning("Notifications failed: %s", e)
+
+        # MCP
+        if cfg.get("features.mcp.enabled", False):
+            try:
+                from nexusai.mcp.server import MCPServer
+                self.mcp_server = MCPServer(
+                    skill_manager=self.skill_manager,
+                    host=cfg.get("features.mcp.host", "0.0.0.0"),
+                    port=cfg.get("features.mcp.server_port", 8090),
+                )
+                logger.info("MCP server configured (starts on app.start())")
+            except Exception as e:
+                logger.warning("MCP server failed: %s", e)
+
+        # Company (Paperclip-style)
+        if cfg.get("features.company.enabled", False):
+            try:
+                from nexusai.company.manager import CompanyManager
+                self.company_manager = CompanyManager(
+                    event_bus=self.event_bus,
+                    agent_engine=self.agent_engine,
+                )
+                logger.info("Company manager initialized")
+            except Exception as e:
+                logger.warning("Company manager failed: %s", e)
+
+    async def _init_platforms(self) -> None:
+        cfg = self.config
+
+        if cfg.get("platforms.telegram.enabled", False):
+            try:
+                from nexusai.platforms.telegram.adapter import TelegramAdapter
+                adapter = TelegramAdapter(
+                    config={
+                        "token": cfg.get("platforms.telegram.bot_token", ""),
+                        "allowed_users": cfg.get("platforms.telegram.allowed_users", []),
+                    },
+                    event_bus=self.event_bus,
+                )
+                self.platforms["telegram"] = adapter
+                logger.info("Telegram adapter configured")
+            except Exception as e:
+                logger.warning("Telegram adapter failed: %s", e)
+
+        if cfg.get("platforms.discord.enabled", False):
+            try:
+                from nexusai.platforms.discord.adapter import DiscordAdapter
+                adapter = DiscordAdapter(
+                    token=cfg.get("platforms.discord.token", ""),
+                    event_bus=self.event_bus,
+                )
+                self.platforms["discord"] = adapter
+                logger.info("Discord adapter configured")
+            except Exception as e:
+                logger.warning("Discord adapter failed: %s", e)
+
+        if cfg.get("platforms.slack.enabled", False):
+            try:
+                from nexusai.platforms.slack.adapter import SlackAdapter
+                adapter = SlackAdapter(
+                    bot_token=cfg.get("platforms.slack.bot_token", ""),
+                    signing_secret=cfg.get("platforms.slack.signing_secret", ""),
+                    event_bus=self.event_bus,
+                )
+                self.platforms["slack"] = adapter
+                logger.info("Slack adapter configured")
+            except Exception as e:
+                logger.warning("Slack adapter failed: %s", e)
+
+        if cfg.get("platforms.cli.enabled", False):
+            try:
+                from nexusai.platforms.cli.adapter import CLIAdapter
+                adapter = CLIAdapter(event_bus=self.event_bus)
+                self.platforms["cli"] = adapter
+                logger.info("CLI adapter configured")
+            except Exception as e:
+                logger.warning("CLI adapter failed: %s", e)
+
+    async def _init_dashboard(self) -> None:
+        try:
+            from nexusai.dashboard.app import create_dashboard_app
+            self.dashboard_app = create_dashboard_app(nexus_app=self)
+            logger.info("Dashboard app created")
+        except Exception as e:
+            logger.warning("Dashboard failed: %s", e)
+
     async def start(self) -> None:
-        """Start all enabled platform adapters and services."""
+        """Start all platforms and background services."""
         self._running = True
         logger.info("Starting NexusAI...")
 
-        # Set up signal handlers for graceful shutdown
-        loop = asyncio.get_running_loop()
-        for sig in (signal.SIGINT, signal.SIGTERM):
+        # Start platforms
+        for name, platform in self.platforms.items():
             try:
-                loop.add_signal_handler(sig, self._handle_signal)
-            except NotImplementedError:
-                # Windows doesn't support add_signal_handler
-                pass
+                task = asyncio.create_task(platform.start(), name=f"platform_{name}")
+                self._tasks.append(task)
+                logger.info("Platform started: %s", name)
+            except Exception as e:
+                logger.error("Platform %s failed to start: %s", name, e)
 
-        tasks: list[asyncio.Task[Any]] = []
+        # Start MCP server
+        if self.mcp_server:
+            try:
+                await self.mcp_server.start()
+            except Exception as e:
+                logger.warning("MCP server start failed: %s", e)
 
-        # Start all enabled platform adapters
-        platform_registry: Registry = self.container.resolve("platform_registry")
-        for name, adapter in platform_registry:
-            logger.info("Starting platform: %s", name)
-            tasks.append(asyncio.create_task(
-                self._run_adapter(name, adapter),
-                name=f"platform:{name}",
-            ))
+        # Start dashboard server
+        if self.dashboard_app:
+            cfg = self.config
+            host = cfg.get("features.dashboard.host", "0.0.0.0")
+            port = cfg.get("features.dashboard.port", 8080)
+            try:
+                import uvicorn
+                config = uvicorn.Config(self.dashboard_app, host=host, port=port, log_level="warning")
+                server = uvicorn.Server(config)
+                task = asyncio.create_task(server.serve(), name="dashboard")
+                self._tasks.append(task)
+                logger.info("Dashboard running at http://%s:%d", host, port)
+            except ImportError:
+                logger.warning("uvicorn not installed — dashboard not started")
+            except Exception as e:
+                logger.warning("Dashboard start failed: %s", e)
 
-        # Start dashboard if enabled
-        if self.config.is_enabled("features.dashboard"):
-            tasks.append(asyncio.create_task(
-                self._start_dashboard(),
-                name="dashboard",
-            ))
-
-        # Start scheduler if enabled
-        if self.config.is_enabled("features.scheduler"):
-            tasks.append(asyncio.create_task(
-                self._start_scheduler(),
-                name="scheduler",
-            ))
-
-        # Start webhook gateway if enabled
-        if self.config.is_enabled("features.webhooks"):
-            tasks.append(asyncio.create_task(
-                self._start_webhook_gateway(),
-                name="webhooks",
-            ))
-
-        # Start MCP server if enabled
-        if self.config.is_enabled("features.mcp"):
-            tasks.append(asyncio.create_task(
-                self._start_mcp_server(),
-                name="mcp",
-            ))
-
-        if not tasks:
-            logger.warning("No platforms or services enabled! Enable at least one platform.")
-            return
-
-        enabled_platforms = platform_registry.names()
-        logger.info(
-            "NexusAI running with platforms: %s",
-            ", ".join(enabled_platforms) if enabled_platforms else "(none)",
-        )
-
-        # Wait for shutdown signal
-        await self._shutdown_event.wait()
-
-        # Cancel all tasks
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info("NexusAI is running. Press Ctrl+C to stop.")
 
     async def stop(self) -> None:
-        """Gracefully shut down all components."""
-        logger.info("Shutting down NexusAI...")
+        """Graceful shutdown."""
+        if not self._running:
+            return
         self._running = False
+        logger.info("Shutting down NexusAI...")
 
-        # Stop platform adapters
-        platform_registry: Registry = self.container.resolve("platform_registry")
-        for name, adapter in platform_registry:
+        # Stop platforms
+        for name, platform in self.platforms.items():
             try:
-                await adapter.stop()
-                logger.info("Stopped platform: %s", name)
+                await platform.stop()
+                logger.info("Platform stopped: %s", name)
+            except Exception as e:
+                logger.warning("Platform %s stop error: %s", name, e)
+
+        # Cancel background tasks
+        for task in self._tasks:
+            task.cancel()
+        if self._tasks:
+            await asyncio.gather(*self._tasks, return_exceptions=True)
+
+        # Stop optional modules
+        if self.scheduler_engine:
+            try:
+                await self.scheduler_engine.stop()
             except Exception:
-                logger.exception("Error stopping platform: %s", name)
+                pass
 
-        # Close database connections
-        if self.container.has("database"):
-            db = self.container.resolve("database")
-            if hasattr(db, "close"):
-                await db.close()
+        if self.notification_engine:
+            try:
+                await self.notification_engine.stop()
+            except Exception:
+                pass
 
-        self._shutdown_event.set()
-        logger.info("NexusAI stopped")
+        if self.mcp_server:
+            try:
+                await self.mcp_server.stop()
+            except Exception:
+                pass
 
-    def _handle_signal(self) -> None:
-        """Handle OS signals for graceful shutdown."""
-        logger.info("Received shutdown signal")
-        asyncio.create_task(self.stop())
+        if self.replay_recorder:
+            try:
+                await self.replay_recorder.stop()
+            except Exception:
+                pass
 
-    async def _run_adapter(self, name: str, adapter: Any) -> None:
-        """Run a platform adapter, handling exceptions."""
+        if self.audit_logger:
+            try:
+                await self.audit_logger.stop()
+            except Exception:
+                pass
+
+        # Close DB
+        if self.db:
+            try:
+                await self.db.close()
+            except Exception:
+                pass
+
+        logger.info("NexusAI stopped.")
+
+    def setup_signal_handlers(self) -> None:
+        """Register SIGINT/SIGTERM handlers for graceful shutdown."""
+        loop = asyncio.get_event_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            try:
+                loop.add_signal_handler(sig, lambda: asyncio.create_task(self.stop()))
+            except (NotImplementedError, RuntimeError):
+                pass  # Windows doesn't support add_signal_handler
+
+    async def run(self) -> None:
+        """Full lifecycle: initialize → start → wait → stop."""
+        await self.initialize()
+        self.setup_signal_handlers()
+        await self.start()
         try:
-            await adapter.start()
-        except asyncio.CancelledError:
+            while self._running:
+                await asyncio.sleep(1)
+        except (KeyboardInterrupt, asyncio.CancelledError):
             pass
-        except Exception:
-            logger.exception("Platform adapter '%s' crashed", name)
-
-    async def _init_database(self) -> None:
-        """Initialize the database engine and run migrations."""
-        db_url = self.config.get("database.url", "sqlite+aiosqlite:///nexusai.db")
-        logger.info("Initializing database: %s", db_url.split("///")[-1] if "///" in db_url else db_url)
-        # Database initialization will be implemented in Phase 1
-        # For now, just log that it would happen
-
-    async def _register_providers(self) -> None:
-        """Register enabled LLM providers."""
-        provider_registry: Registry = self.container.resolve("provider_registry")
-        providers_config = self.config.get("providers", {})
-
-        for name, provider_config in providers_config.items():
-            if not isinstance(provider_config, dict):
-                continue
-            if not provider_config.get("enabled", False):
-                continue
-            logger.info("LLM provider enabled: %s", name)
-            # Provider instantiation will be implemented in Phase 3
-            # provider_registry.register(name, provider_instance)
-
-    async def _register_platforms(self) -> None:
-        """Register enabled platform adapters."""
-        platform_registry: Registry = self.container.resolve("platform_registry")
-        platforms_config = self.config.get("platforms", {})
-
-        for name, platform_config in platforms_config.items():
-            if not isinstance(platform_config, dict):
-                continue
-            if not platform_config.get("enabled", False):
-                continue
-            logger.info("Platform enabled: %s", name)
-            # Platform instantiation will be implemented in Phase 2
-            # platform_registry.register(name, adapter_instance)
-
-    async def _load_skills(self) -> None:
-        """Load and register enabled skills."""
-        logger.debug("Loading skills...")
-        # Skill loading will be implemented in Phase 4
-
-    async def _load_agents(self) -> None:
-        """Load agent definitions from config."""
-        logger.debug("Loading agent definitions...")
-        # Agent loading will be implemented in Phase 5
-
-    def _wire_message_router(self) -> None:
-        """Wire the message routing pipeline."""
-        logger.debug("Wiring message router...")
-        # Message router will be implemented in Phase 2
-
-    async def _start_dashboard(self) -> None:
-        """Start the WebUI dashboard."""
-        logger.info("Starting dashboard on port %s", self.config.get("features.dashboard.port", 8080))
-        # Dashboard will be implemented in Phase 11
-
-    async def _start_scheduler(self) -> None:
-        """Start the task scheduler."""
-        logger.info("Starting scheduler...")
-        # Scheduler will be implemented in Phase 12
-
-    async def _start_webhook_gateway(self) -> None:
-        """Start the webhook API gateway."""
-        logger.info("Starting webhook gateway on port %s", self.config.get("features.webhooks.port", 8081))
-        # Webhook gateway will be implemented in Phase 12
-
-    async def _start_mcp_server(self) -> None:
-        """Start the MCP server."""
-        logger.info("Starting MCP server on port %s", self.config.get("features.mcp.server_port", 8090))
-        # MCP server will be implemented in Phase 8
-
-    @staticmethod
-    def _get_version() -> str:
-        from nexusai import __version__
-        return __version__
+        finally:
+            await self.stop()

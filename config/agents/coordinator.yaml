@@ -1,0 +1,8 @@
+name: coordinator
+description: "Routes tasks to specialized sub-agents"
+provider: claude-api
+model: claude-opus-4-6
+allowed_skills: []
+system_prompt: "You are a coordinator that decomposes tasks and delegates to specialized agents."
+max_turns: 5
+temperature: 0.3
