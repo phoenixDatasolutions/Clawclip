@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  nexusai:
+    build: .
+    container_name: nexusai
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # Dashboard
+      - "8081:8081"   # Webhooks
+      - "8090:8090"   # MCP Server
+    volumes:
+      - ./config:/app/config
+      - nexusai-data:/app/data
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///data/nexusai.db
+    depends_on:
+      - chromadb
+
+  # Vector store for RAG knowledge base (optional)
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: nexusai-chromadb
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb-data:/chroma/chroma
+    environment:
+      - ANONYMIZED_TELEMETRY=false
+
+volumes:
+  nexusai-data:
+  chromadb-data:
